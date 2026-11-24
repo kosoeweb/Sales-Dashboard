@@ -1,0 +1,2943 @@
+<!DOCTYPE html>
+<html lang="my" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UT Inventory & Sales BI Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Inter & Noto Sans Myanmar -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Myanmar:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans Myanmar', 'sans-serif'],
+                    },
+                    colors: {
+                        pbi: {
+                            bg: '#080D19',
+                            card: '#0F172A',
+                            elevated: '#1E293B',
+                            border: '#1E293B',
+                            cyan: '#06B6D4',
+                            blue: '#3B82F6',
+                            emerald: '#10B981',
+                            amber: '#F59E0B',
+                            rose: '#F43F5E',
+                            violet: '#8B5CF6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #080D19;
+            color: #F8FAFC;
+            font-family: 'Inter', 'Noto Sans Myanmar', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Custom subtle scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #080D19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Power BI Card Surface */
+        .pbi-panel {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(11, 18, 34, 0.98) 100%);
+            border: 1px solid rgba(51, 65, 85, 0.65);
+            border-radius: 0.75rem;
+            box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.55);
+        }
+
+        .kpi-box {
+            background: linear-gradient(145deg, #111C35 0%, #0B1222 100%);
+            border: 1px solid rgba(51, 65, 85, 0.7);
+            border-radius: 0.75rem;
+            transition: transform 0.16s ease, border-color 0.16s ease;
+        }
+        .kpi-box:hover {
+            transform: translateY(-2px);
+            border-color: rgba(6, 182, 212, 0.55);
+        }
+
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Custom dark select dropdown arrow */
+        .dark-select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.4rem center;
+            background-repeat: no-repeat;
+            background-size: 1.15em 1.15em;
+            padding-right: 1.65rem;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        /* Multi-Select Popover Panel */
+        .ms-popover {
+            background: #0F172A;
+            border: 1px solid #334155;
+            border-radius: 0.55rem;
+            box-shadow: 0 14px 32px -4px rgba(0, 0, 0, 0.75);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-pbi-bg text-slate-100 selection:bg-pbi-cyan selection:text-slate-950">
+
+    <!-- ===================================================================== -->
+    <!-- TOP EXECUTIVE HEADER BAR                                              -->
+    <!-- ===================================================================== -->
+    <header class="bg-[#0B1120] border-b border-slate-800/90 px-3 py-2 sticky top-0 z-30 shadow-lg">
+        <div class="max-w-[1920px] mx-auto flex flex-wrap items-center justify-between gap-2">
+
+            <!-- Left: UT Brand Logo, Title & Connection Status -->
+            <div class="flex items-center gap-3">
+                <div onclick="openApiModal()" title="UT Logo / API Settings ပြင်ဆင်ရန်" class="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#0B1120] border border-pbi-cyan/50 flex items-center justify-center shadow-lg shadow-cyan-500/20 shrink-0 overflow-hidden cursor-pointer hover:border-pbi-cyan hover:scale-[1.03] transition relative group">
+                    <!-- Custom Image Logo (Shown if user provides a custom Logo URL) -->
+                    <img id="customBrandLogoImg" alt="UT Logo" onerror="handleBrandLogoError()" class="hidden w-full h-full object-contain p-0.5">
+                    <!-- Default Built-in Custom SVG "UT" Monogram Logo -->
+                    <svg id="defaultUtSvgLogo" viewBox="0 0 48 48" class="w-10 h-10 sm:w-12 sm:h-12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="utCyanGrad" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stop-color="#22D3EE"/>
+                                <stop offset="55%" stop-color="#3B82F6"/>
+                                <stop offset="100%" stop-color="#8B5CF6"/>
+                            </linearGradient>
+                            <linearGradient id="utAmberGrad" x1="12" y1="8" x2="36" y2="40" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stop-color="#FBBF24"/>
+                                <stop offset="100%" stop-color="#F59E0B"/>
+                            </linearGradient>
+                        </defs>
+                        <!-- Outer Technical Frame with Battery Terminal Accents -->
+                        <rect x="4" y="7" width="40" height="35" rx="8" stroke="url(#utCyanGrad)" stroke-width="2.2" fill="rgba(6, 182, 212, 0.08)"/>
+                        <rect x="13" y="3.5" width="6" height="3.5" rx="1.2" fill="#22D3EE"/>
+                        <rect x="29" y="3.5" width="6" height="3.5" rx="1.2" fill="#F59E0B"/>
+                        <!-- Bold "U" Letterform -->
+                        <path d="M11.5 16.5V26.5C11.5 30.366 14.41 33.5 18.25 33.5C22.09 33.5 25 30.366 25 26.5V16.5" stroke="#F8FAFC" stroke-width="3.6" stroke-linecap="round"/>
+                        <!-- Bold "T" Letterform with Amber Power Bar -->
+                        <path d="M26.5 16.5H37.5" stroke="url(#utAmberGrad)" stroke-width="3.6" stroke-linecap="round"/>
+                        <path d="M32 16.5V33.5" stroke="#22D3EE" stroke-width="3.6" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-sm sm:text-base font-extrabold tracking-tight text-white">UT INVENTORY &amp; SALES BI</h1>
+                        <span id="connectionBadge" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                            <span id="connectionDot" class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                            <span id="connectionText">Demo Mode</span>
+                        </span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 hidden sm:block">
+                        Apr–Mar Budget Year • FIFO Valuation, Purchase &amp; Sales Analytics (<span id="lastSyncText">Sample Dataset</span>)
+                    </p>
+                </div>
+            </div>
+
+            <!-- Center: 3 Main Module Switcher Tabs (Purchase / Inventory / Sale) -->
+            <nav class="flex items-center bg-[#080D19] p-1 rounded-xl border border-slate-800 shadow-inner order-3 lg:order-2 w-full lg:w-auto justify-center">
+                <button id="navTabPurchase" onclick="switchModuleTab('PURCHASE')" class="flex-1 lg:flex-initial flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer">
+                    <i class="fa-solid fa-cart-flatbed text-xs"></i>
+                    <span>Purchase <span class="font-normal opacity-80 hidden sm:inline">(အဝယ်)</span></span>
+                </button>
+                <button id="navTabInventory" onclick="switchModuleTab('INVENTORY')" class="flex-1 lg:flex-initial flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer">
+                    <i class="fa-solid fa-warehouse text-xs"></i>
+                    <span>Inventory <span class="font-normal opacity-80 hidden sm:inline">(လက်ကျန်)</span></span>
+                </button>
+                <button id="navTabSale" onclick="switchModuleTab('SALE')" class="flex-1 lg:flex-initial flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer">
+                    <i class="fa-solid fa-chart-line text-xs"></i>
+                    <span>Sale <span class="font-normal opacity-80 hidden sm:inline">(အရောင်း)</span></span>
+                </button>
+            </nav>
+
+            <!-- Right: API Connect, Refresh & Reset -->
+            <div class="flex items-center gap-1.5 order-2 lg:order-3">
+                <button onclick="openApiModal()" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-pbi-cyan to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-bold text-xs shadow-sm transition cursor-pointer">
+                    <i class="fa-solid fa-plug text-[11px]"></i>
+                    <span>API ချိတ်ဆက်ရန်</span>
+                </button>
+                <button id="btnRefreshApi" onclick="refreshLiveData()" class="p-1.5 rounded-lg bg-pbi-elevated hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer" title="Google Sheet မှ နောက်ဆုံးဒေတာ ပြန်ဆွဲယူရန်">
+                    <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-xs"></i>
+                </button>
+                <button onclick="resetAllFilters()" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-pbi-elevated hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 text-xs font-medium transition cursor-pointer" title="Filter အားလုံး ရှင်းလင်းရန်">
+                    <i class="fa-solid fa-filter-circle-xmark text-xs"></i>
+                    <span class="hidden sm:inline">Reset</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===================================================================== -->
+    <!-- GLOBAL SLICER BAR: MULTI-SELECT FILTERS & COMPARE MODE CONTROLS       -->
+    <!-- ===================================================================== -->
+    <section class="bg-[#0B1120]/95 border-b border-slate-800/90 px-3 py-1.5 shrink-0 z-20">
+        <div class="max-w-[1920px] mx-auto flex flex-wrap items-center justify-between gap-1.5">
+            
+            <!-- Left & Center Multi-Select Slicers -->
+            <div id="multiSlicerContainer" class="flex flex-wrap items-center gap-1.5">
+                <!-- Dynamically rendered Multi-Select Slicers: FY, Quarter, Month, Brand, Category, Size, Ah, Sales Rep -->
+            </div>
+
+            <!-- Right: Compare Toggle, Inventory Mode Switcher & Active Cross-Filter Chips -->
+            <div class="flex flex-wrap items-center gap-1.5">
+                <!-- Compare Mode Toggle Button -->
+                <button id="btnToggleCompare" onclick="toggleCompareMode()" class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold border border-slate-700 bg-pbi-elevated text-slate-200 hover:border-pbi-cyan hover:text-white transition cursor-pointer" title="Budget Year, Quarter သို့မဟုတ် Brand နှစ်ခု ယှဉ်ကြည့်ရန်">
+                    <i class="fa-solid fa-code-compare text-pbi-cyan text-[11px]"></i>
+                    <span>Compare: Off</span>
+                </button>
+
+                <!-- Inventory-Specific Batch Toggle (visible only on Inventory Tab) -->
+                <div id="inventoryBatchControls" class="hidden items-center gap-1.5">
+                    <div class="inline-flex rounded-md bg-[#080D19] p-0.5 border border-slate-700/80 text-[10px] font-semibold">
+                        <button id="btnInvActiveOnly" onclick="setInventoryBatchMode(true)" class="px-2 py-0.5 rounded bg-pbi-amber text-slate-950 font-bold transition cursor-pointer">
+                            Active Stock (Bal &gt; 0)
+                        </button>
+                        <button id="btnInvAllBatches" onclick="setInventoryBatchMode(false)" class="px-2 py-0.5 rounded text-slate-400 hover:text-white transition cursor-pointer">
+                            All Batches
+                        </button>
+                    </div>
+                    <button id="btnInvRespectPeriod" onclick="toggleInventoryPeriodFilter()" class="px-2 py-1 rounded-md text-[10px] font-semibold border border-slate-700 bg-pbi-elevated text-slate-300 hover:text-white transition cursor-pointer" title="Receiving Date ၏ FY/Quarter/Month ဖြင့်ပါ စစ်ထုတ်ရန်">
+                        <i class="fa-regular fa-clock mr-1 text-pbi-cyan"></i><span>Recv Period: Off</span>
+                    </button>
+                </div>
+
+                <!-- Active Cross-Filter Badges Container -->
+                <div id="crossFilterBadges" class="flex flex-wrap items-center gap-1"></div>
+            </div>
+
+        </div>
+
+        <!-- Collapsible Side-by-Side Comparison Strip (Visible when Compare Mode is ON) -->
+        <div id="compareStrip" class="hidden max-w-[1920px] mx-auto mt-1.5 pt-1.5 border-t border-slate-800/90 flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-pbi-cyan">
+                    <i class="fa-solid fa-scale-balanced"></i> နှိုင်းယှဉ်မှု (Compare):
+                </span>
+
+                <!-- Compare Dimension -->
+                <div class="flex items-center bg-[#080D19] border border-slate-700 rounded-md px-2 py-0.5">
+                    <span class="text-[10px] text-slate-400 mr-1">By:</span>
+                    <select id="compareDimension" onchange="onCompareDimensionChange()" class="dark-select bg-transparent text-[11px] text-white font-semibold focus:outline-none cursor-pointer">
+                        <option value="FY" class="bg-pbi-card">Budget Year (YoY)</option>
+                        <option value="QUARTER" class="bg-pbi-card">Quarter (QoQ)</option>
+                        <option value="BRAND" class="bg-pbi-card">Brand vs Brand</option>
+                    </select>
+                </div>
+
+                <!-- Primary Target (A) -->
+                <div class="flex items-center bg-pbi-cyan/10 border border-pbi-cyan/40 rounded-md px-2 py-0.5">
+                    <span class="w-2 h-2 rounded-full bg-pbi-cyan mr-1.5"></span>
+                    <span class="text-[10px] text-pbi-cyan font-semibold mr-1">Target (A):</span>
+                    <select id="compareTargetA" onchange="onCompareSelectionChange()" class="dark-select bg-transparent text-[11px] text-white font-bold focus:outline-none cursor-pointer"></select>
+                </div>
+
+                <span class="text-[10px] font-extrabold text-slate-500">VS</span>
+
+                <!-- Baseline (B) -->
+                <div class="flex items-center bg-pbi-violet/10 border border-pbi-violet/40 rounded-md px-2 py-0.5">
+                    <span class="w-2 h-2 rounded-full bg-pbi-violet mr-1.5"></span>
+                    <span class="text-[10px] text-violet-300 font-semibold mr-1">Baseline (B):</span>
+                    <select id="compareTargetB" onchange="onCompareSelectionChange()" class="dark-select bg-transparent text-[11px] text-white font-bold focus:outline-none cursor-pointer"></select>
+                </div>
+            </div>
+
+            <!-- Live Side-by-Side KPI Variance Summary Pills -->
+            <div id="compareSummaryPills" class="flex flex-wrap items-center gap-2 text-[11px]"></div>
+        </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- MAIN DASHBOARD WORKSPACE (DYNAMIC PER ACTIVE MODULE TAB)              -->
+    <!-- ===================================================================== -->
+    <main class="flex-1 max-w-[1920px] w-full mx-auto p-3 flex flex-col gap-3">
+
+        <!-- ROW 1: DYNAMIC KPI CARDS STRIP -->
+        <section id="kpiGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+            <!-- Populated dynamically by renderPurchaseModule / renderInventoryModule / renderSaleModule -->
+        </section>
+
+        <!-- ROW 2: ANALYTICAL CHARTS (12-COLUMN POWER BI GRID) -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+            
+            <!-- Chart 1 (5 cols): Primary Trend / Aging / Comparison Chart -->
+            <div class="pbi-panel p-2.5 sm:p-3 lg:col-span-5 flex flex-col justify-between">
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <div class="min-w-0">
+                        <h3 class="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 truncate">
+                            <span id="chart1Accent" class="w-1.5 h-4 rounded-full bg-pbi-cyan inline-block shrink-0"></span>
+                            <span id="chart1Title" class="truncate">Monthly Trend</span>
+                        </h3>
+                        <p id="chart1Subtitle" class="text-[10px] text-slate-400 truncate">Apr → Mar Fiscal Sequence</p>
+                    </div>
+                    <div id="chart1Controls" class="flex items-center gap-1 shrink-0"></div>
+                </div>
+                <div class="relative w-full h-[165px]">
+                    <canvas id="canvasChart1"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 2 (4 cols): Size / Ah / Top Products Breakdown -->
+            <div class="pbi-panel p-2.5 sm:p-3 lg:col-span-4 flex flex-col justify-between">
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <div class="min-w-0">
+                        <h3 class="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 truncate">
+                            <span id="chart2Accent" class="w-1.5 h-4 rounded-full bg-pbi-amber inline-block shrink-0"></span>
+                            <span id="chart2Title" class="truncate">Breakdown by Size &amp; Ah</span>
+                        </h3>
+                        <p id="chart2Subtitle" class="text-[10px] text-slate-400 truncate">Click bar to cross-filter</p>
+                    </div>
+                    <div id="chart2Controls" class="flex bg-[#080D19] rounded-md p-0.5 border border-slate-800 text-[10px] shrink-0"></div>
+                </div>
+                <div class="relative w-full h-[165px]">
+                    <canvas id="canvasChart2"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 3 (3 cols): Brand & Category Share Donut -->
+            <div class="pbi-panel p-2.5 sm:p-3 lg:col-span-3 flex flex-col justify-between">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <div class="min-w-0">
+                        <h3 class="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 truncate">
+                            <span id="chart3Accent" class="w-1.5 h-4 rounded-full bg-pbi-emerald inline-block shrink-0"></span>
+                            <span id="chart3Title" class="truncate">Brand &amp; Category Mix</span>
+                        </h3>
+                        <p id="chart3Subtitle" class="text-[10px] text-slate-400 truncate">Click slice to filter</p>
+                    </div>
+                    <div id="chart3Controls" class="flex bg-[#080D19] rounded-md p-0.5 border border-slate-800 text-[10px] shrink-0"></div>
+                </div>
+                <div class="relative w-full h-[130px]">
+                    <canvas id="canvasChart3"></canvas>
+                </div>
+                <div id="chart3Legend" class="mt-1 pt-1 border-t border-slate-800/80 flex flex-wrap justify-center gap-1.5 text-[10px]"></div>
+            </div>
+
+        </section>
+
+        <!-- ROW 3: DETAILED DATA MATRICES & LEDGERS (12-COLUMN GRID) -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-1">
+            
+            <!-- Left Table (7 cols): Primary Module Matrix / Transactions -->
+            <div class="pbi-panel p-3 lg:col-span-7 flex flex-col min-h-[245px]">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div>
+                        <h3 class="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+                            <i id="leftTableIcon" class="fa-solid fa-table-list text-pbi-cyan text-xs"></i>
+                            <span id="leftTableTitle">Detailed Ledger</span>
+                        </h3>
+                        <p id="leftTableSubtitle" class="text-[10px] text-slate-400">Click row to cross-filter</p>
+                    </div>
+                    <div class="relative w-44 sm:w-56">
+                        <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]"></i>
+                        <input id="detailSearchInput" type="text" oninput="renderActiveModule()" placeholder="Search code, size, PO, customer..." class="w-full bg-[#080D19] border border-slate-700/80 rounded-lg pl-7 pr-2 py-1 text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-pbi-cyan">
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto overflow-y-auto max-h-[250px] flex-1">
+                    <table class="w-full text-left border-collapse">
+                        <thead id="leftTableHead" class="sticky top-0 bg-[#0F172A] z-10 text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-800"></thead>
+                        <tbody id="leftTableBody" class="divide-y divide-slate-800/60 text-xs"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Right Table (5 cols): Secondary Summary / Aging / Sales Rep -->
+            <div class="pbi-panel p-3 lg:col-span-5 flex flex-col min-h-[245px]">
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <div>
+                        <h3 class="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+                            <i id="rightTableIcon" class="fa-solid fa-ranking-star text-pbi-amber text-xs"></i>
+                            <span id="rightTableTitle">Summary Breakdown</span>
+                        </h3>
+                        <p id="rightTableSubtitle" class="text-[10px] text-slate-400">Performance &amp; risk ranking</p>
+                    </div>
+                    <span id="rightTableBadge" class="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">Live</span>
+                </div>
+
+                <div id="rightTableContainer" class="overflow-x-auto overflow-y-auto max-h-[250px] flex-1">
+                    <!-- Rendered dynamically per active module -->
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- GOOGLE APPS SCRIPT WEB APP API CONNECTION MODAL                       -->
+    <!-- ===================================================================== -->
+    <div id="apiModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-[#0F172A] border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-pbi-cyan/15 border border-pbi-cyan/30 flex items-center justify-center text-pbi-cyan">
+                        <i class="fa-solid fa-cloud-arrow-down"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white">Google Apps Script Web App API ချိတ်ဆက်ရန်</h3>
+                        <p class="text-[11px] text-slate-400">UT Inventory_FIFO (SALE, PURCHASE &amp; INVENTORY, PRODUCT)</p>
+                    </div>
+                </div>
+                <button onclick="closeApiModal()" class="text-slate-400 hover:text-white p-1 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <div class="mt-4 space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Web App URL (https://script.google.com/macros/s/.../exec)</label>
+                    <input id="webAppUrlInput" type="url" placeholder="https://script.google.com/macros/s/AKfycb.../exec" class="w-full bg-[#080D19] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pbi-cyan">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">UT Company Logo URL <span class="font-normal text-slate-400">(Optional - ကိုယ်ပိုင် Logo ပုံလင့်ခ် ထည့်လိုပါက)</span></label>
+                    <div class="flex gap-2">
+                        <input id="customLogoUrlInput" type="url" placeholder="https://... (သို့မဟုတ် Google Drive Image Link)" class="flex-1 bg-[#080D19] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pbi-cyan">
+                        <button type="button" onclick="saveCustomLogoOnly()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-pbi-cyan transition cursor-pointer shrink-0">
+                            Logo သိမ်းရန်
+                        </button>
+                    </div>
+                </div>
+
+                <div id="apiModalStatus" class="hidden rounded-lg p-2.5 text-xs"></div>
+
+                <div class="bg-[#080D19] border border-slate-800 rounded-lg p-3 text-[11px] text-slate-400 space-y-1">
+                    <p class="font-semibold text-slate-300"><i class="fa-solid fa-circle-info text-pbi-cyan mr-1"></i> မှတ်ချက် -</p>
+                    <p>• Google Sheet ထဲမှ <code class="text-pbi-cyan">Product Code</code> ဖြင့် <strong>Size, Ah, Brand, Category</strong> တို့ကို ဇယား (၃) ခုလုံးသို့ အလိုအလျောက် ချိတ်ဆက်တွက်ချက်ပေးပါမည်။</p>
+                    <p>• ဘဏ္ဍာရေးနှစ်ကို <strong>April 1 မှ March 31</strong> အထိ (Q1: Apr-Jun, Q2: Jul-Sep, Q3: Oct-Dec, Q4: Jan-Mar) သတ်မှတ်ထားပါသည်။</p>
+                </div>
+            </div>
+
+            <div class="mt-5 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                <button onclick="loadDemoDataset()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition cursor-pointer">
+                    Demo Data ပြန်သုံးရန်
+                </button>
+                <div class="flex items-center gap-2">
+                    <button onclick="closeApiModal()" class="px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:text-white text-xs font-medium transition cursor-pointer">
+                        ပိတ်ရန်
+                    </button>
+                    <button id="btnConnectSave" onclick="connectAndSaveApi()" class="px-4 py-1.5 rounded-lg bg-gradient-to-r from-pbi-cyan to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-bold text-xs shadow transition cursor-pointer">
+                        ချိတ်ဆက်ပြီး ဒေတာဆွဲယူမည်
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- TOAST NOTIFICATION BANNER (NO ALERT() USED)                           -->
+    <!-- ===================================================================== -->
+    <div id="toastBanner" class="fixed bottom-4 right-4 z-50 hidden items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#0F172A] border border-pbi-cyan/50 shadow-2xl text-xs text-white transition-all">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-pbi-emerald text-sm"></i>
+        <span id="toastMessage">Updated</span>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- JAVASCRIPT: FISCAL ENGINE, RELATIONAL JOIN & 3-TAB BI VISUALIZATIONS  -->
+    <!-- ===================================================================== -->
+    <script>
+        // =====================================================================
+        // 1. CONSTANTS & GLOBAL APPLICATION STATE
+        // =====================================================================
+        const STORAGE_KEY_API = 'ut_inventory_fifo_webapp_url_v2';
+        const STORAGE_KEY_LOGO = 'ut_custom_brand_logo_url_v1';
+        const FISCAL_MONTHS = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
+        const CAL_MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        // Default Chart.js Dark Theme Styling
+        Chart.defaults.color = '#94A3B8';
+        Chart.defaults.borderColor = 'rgba(51, 65, 85, 0.35)';
+        Chart.defaults.font.family = "'Inter', 'Noto Sans Myanmar', sans-serif";
+
+        // Active Module: 'PURCHASE' | 'INVENTORY' | 'SALE'
+        let activeModule = 'SALE';
+
+        // Master Joined Datasets
+        let productMap = {};
+        let joinedPurchases = [];
+        let joinedSales = [];
+
+        // Global Multi-Select Slicers + Cross-Filters (Empty Set = ALL)
+        let filters = {
+            fy: new Set(),
+            quarter: new Set(),
+            month: new Set(),
+            brand: new Set(),
+            category: new Set(),
+            size: new Set(),
+            ah: new Set(),
+            rep: new Set(),
+            // Chart / Table Row Cross-Filters
+            productCode: new Set(),
+            customer: new Set(),
+            poNo: new Set(),
+            agingBucket: new Set()
+        };
+
+        // Currently open multi-select dropdown key (or null)
+        let openMultiSelectKey = null;
+        let multiSelectSearchTerm = '';
+
+        // Cached slicer option lists
+        let slicerOptionsCatalog = {
+            fy: [],
+            quarter: [
+                { val: 'Q1', label: 'Q1 (Apr-Jun)' },
+                { val: 'Q2', label: 'Q2 (Jul-Sep)' },
+                { val: 'Q3', label: 'Q3 (Oct-Dec)' },
+                { val: 'Q4', label: 'Q4 (Jan-Mar)' }
+            ],
+            month: FISCAL_MONTHS.map(m => ({ val: m, label: m })),
+            brand: [],
+            category: [],
+            size: [],
+            ah: [],
+            rep: [],
+            customer: []
+        };
+
+        // Side-by-Side Comparison State
+        let compareState = {
+            enabled: false,
+            dimension: 'FY', // 'FY' | 'QUARTER' | 'BRAND'
+            targetA: '',
+            targetB: ''
+        };
+
+        // Inventory-specific view toggles
+        let invActiveOnly = true;       // true = Balance Qty > 0, false = All Batches
+        let invRespectPeriod = false;   // true = apply FY/Quarter/Month to Receiving Date on Inventory tab
+
+        // Sub-modes for Chart 2 & Chart 3 per module
+        let chart2SubMode = {
+            PURCHASE: 'SIZE',   // 'SIZE' | 'AH' | 'BRAND'
+            INVENTORY: 'SIZE',  // 'SIZE' | 'AH' | 'BRAND'
+            SALE: 'SIZE'        // 'SIZE' | 'AH' | 'MODEL'
+        };
+        let chart3SubMode = {
+            PURCHASE: 'BRAND',  // 'BRAND' | 'CATEGORY'
+            INVENTORY: 'BRAND', // 'BRAND' | 'CATEGORY'
+            SALE: 'BRAND'       // 'BRAND' | 'CATEGORY'
+        };
+
+        // Chart.js Instances
+        let chart1Inst = null;
+        let chart2Inst = null;
+        let chart3Inst = null;
+
+        // =====================================================================
+        // 2. REALISTIC DEMO DATASET MATCHING UT INVENTORY_FIFO SCHEMA
+        // =====================================================================
+        const SAMPLE_API_PAYLOAD = {
+            updatedAt: 'Demo Dataset (UT Inventory_FIFO Schema)',
+            data: {
+                'PRODUCT': [
+                    { 'Product Code': 'INC-55B24L', 'Product Description': 'INCOE MF 55B24L (45Ah)', 'JIS Code': '55B24L', 'Size': 'B24', 'AH': 45, 'Brand': 'INCOE', 'Category': 'MF', 'Unit Price': 168000, 'Avg. Unit Cost': 128000 },
+                    { 'Product Code': 'INC-80D26L', 'Product Description': 'INCOE MF 80D26L (65Ah)', 'JIS Code': '80D26L', 'Size': 'D26', 'AH': 65, 'Brand': 'INCOE', 'Category': 'MF', 'Unit Price': 235000, 'Avg. Unit Cost': 178000 },
+                    { 'Product Code': 'INC-95D31R', 'Product Description': 'INCOE MF 95D31R (80Ah)', 'JIS Code': '95D31R', 'Size': 'D31', 'AH': 80, 'Brand': 'INCOE', 'Category': 'MF', 'Unit Price': 285000, 'Avg. Unit Cost': 215000 },
+                    { 'Product Code': 'INC-N120',   'Product Description': 'INCOE Dry Charge N120 (120Ah)', 'JIS Code': 'N120', 'Size': 'N120', 'AH': 120, 'Brand': 'INCOE', 'Category': 'Dry Charge', 'Unit Price': 395000, 'Avg. Unit Cost': 302000 },
+                    { 'Product Code': 'INC-N150',   'Product Description': 'INCOE Dry Charge N150 (150Ah)', 'JIS Code': 'N150', 'Size': 'N150', 'AH': 150, 'Brand': 'INCOE', 'Category': 'Dry Charge', 'Unit Price': 485000, 'Avg. Unit Cost': 372000 },
+                    { 'Product Code': 'RCK-46B24L', 'Product Description': 'ROCKET SMF 46B24L (45Ah)', 'JIS Code': '46B24L', 'Size': 'B24', 'AH': 45, 'Brand': 'ROCKET', 'Category': 'MF', 'Unit Price': 175000, 'Avg. Unit Cost': 134000 },
+                    { 'Product Code': 'RCK-75D23L', 'Product Description': 'ROCKET SMF 75D23L (65Ah)', 'JIS Code': '75D23L', 'Size': 'D23', 'AH': 65, 'Brand': 'ROCKET', 'Category': 'MF', 'Unit Price': 242000, 'Avg. Unit Cost': 185000 },
+                    { 'Product Code': 'RCK-105D31L','Product Description': 'ROCKET SMF 105D31L (90Ah)', 'JIS Code': '105D31L', 'Size': 'D31', 'AH': 90, 'Brand': 'ROCKET', 'Category': 'MF', 'Unit Price': 315000, 'Avg. Unit Cost': 240000 },
+                    { 'Product Code': 'RCK-N100',   'Product Description': 'ROCKET Dry Charge N100 (100Ah)', 'JIS Code': 'N100', 'Size': 'N100', 'AH': 100, 'Brand': 'ROCKET', 'Category': 'Dry Charge', 'Unit Price': 345000, 'Avg. Unit Cost': 265000 },
+                    { 'Product Code': 'RCK-N200',   'Product Description': 'ROCKET Dry Charge N200 (200Ah)', 'JIS Code': 'N200', 'Size': 'N200', 'AH': 200, 'Brand': 'ROCKET', 'Category': 'Dry Charge', 'Unit Price': 640000, 'Avg. Unit Cost': 495000 }
+                ],
+                'PURCHASE & INVENTORY': [
+                    // FY 2025-2026 Batches (Older stock + sold out lots)
+                    { 'Receiving Date': '2025-05-12', 'Status': 'Closed', 'PO No.': 'PO-2501', 'Product Code': 'INC-55B24L', 'Quantity': 120, 'Cost Price': 125000, 'Cost Total': 15000000, 'Sold Qty': 120, 'Balance Qty': 0,  'Valuation': 0,        'Aging (Month)': 18, 'Sale Value': 20160000 },
+                    { 'Receiving Date': '2025-07-18', 'Status': 'Active', 'PO No.': 'PO-2504', 'Product Code': 'INC-N150',   'Quantity': 45,  'Cost Price': 368000, 'Cost Total': 16560000, 'Sold Qty': 31,  'Balance Qty': 14, 'Valuation': 5152000,  'Aging (Month)': 16, 'Sale Value': 21825000 },
+                    { 'Receiving Date': '2025-09-22', 'Status': 'Active', 'PO No.': 'PO-2508', 'Product Code': 'RCK-N200',   'Quantity': 30,  'Cost Price': 490000, 'Cost Total': 14700000, 'Sold Qty': 19,  'Balance Qty': 11, 'Valuation': 5390000,  'Aging (Month)': 14, 'Sale Value': 19200000 },
+                    { 'Receiving Date': '2025-11-10', 'Status': 'Closed', 'PO No.': 'PO-2512', 'Product Code': 'RCK-46B24L', 'Quantity': 110, 'Cost Price': 132000, 'Cost Total': 14520000, 'Sold Qty': 110, 'Balance Qty': 0,  'Valuation': 0,        'Aging (Month)': 12, 'Sale Value': 19250000 },
+                    { 'Receiving Date': '2026-01-15', 'Status': 'Active', 'PO No.': 'PO-2601', 'Product Code': 'INC-80D26L', 'Quantity': 90,  'Cost Price': 176000, 'Cost Total': 15840000, 'Sold Qty': 72,  'Balance Qty': 18, 'Valuation': 3168000,  'Aging (Month)': 10, 'Sale Value': 21150000 },
+                    { 'Receiving Date': '2026-02-20', 'Status': 'Active', 'PO No.': 'PO-2603', 'Product Code': 'RCK-75D23L', 'Quantity': 85,  'Cost Price': 183000, 'Cost Total': 15555000, 'Sold Qty': 61,  'Balance Qty': 24, 'Valuation': 4392000,  'Aging (Month)': 9,  'Sale Value': 20570000 },
+                    // FY 2026-2027 Batches (Apr 2026 - Mar 2027)
+                    { 'Receiving Date': '2026-04-08', 'Status': 'Active', 'PO No.': 'PO-2605', 'Product Code': 'INC-55B24L', 'Quantity': 150, 'Cost Price': 128000, 'Cost Total': 19200000, 'Sold Qty': 112, 'Balance Qty': 38, 'Valuation': 4864000,  'Aging (Month)': 7,  'Sale Value': 25200000 },
+                    { 'Receiving Date': '2026-05-14', 'Status': 'Active', 'PO No.': 'PO-2607', 'Product Code': 'INC-95D31R', 'Quantity': 80,  'Cost Price': 215000, 'Cost Total': 17200000, 'Sold Qty': 54,  'Balance Qty': 26, 'Valuation': 5590000,  'Aging (Month)': 6,  'Sale Value': 22800000 },
+                    { 'Receiving Date': '2026-06-25', 'Status': 'Active', 'PO No.': 'PO-2609', 'Product Code': 'RCK-105D31L','Quantity': 75,  'Cost Price': 240000, 'Cost Total': 18000000, 'Sold Qty': 46,  'Balance Qty': 29, 'Valuation': 6960000,  'Aging (Month)': 5,  'Sale Value': 23625000 },
+                    { 'Receiving Date': '2026-08-03', 'Status': 'Active', 'PO No.': 'PO-2611', 'Product Code': 'RCK-46B24L', 'Quantity': 140, 'Cost Price': 134000, 'Cost Total': 18760000, 'Sold Qty': 82,  'Balance Qty': 58, 'Valuation': 7772000,  'Aging (Month)': 3,  'Sale Value': 24500000 },
+                    { 'Receiving Date': '2026-09-19', 'Status': 'Active', 'PO No.': 'PO-2614', 'Product Code': 'INC-N120',   'Quantity': 60,  'Cost Price': 302000, 'Cost Total': 18120000, 'Sold Qty': 28,  'Balance Qty': 32, 'Valuation': 9664000,  'Aging (Month)': 2,  'Sale Value': 23700000 },
+                    { 'Receiving Date': '2026-10-28', 'Status': 'Active', 'PO No.': 'PO-2616', 'Product Code': 'RCK-N100',   'Quantity': 65,  'Cost Price': 265000, 'Cost Total': 17225000, 'Sold Qty': 21,  'Balance Qty': 44, 'Valuation': 11660000, 'Aging (Month)': 1,  'Sale Value': 22425000 }
+                ],
+                'SALE': [
+                    // FY 2025-2026 Sales
+                    { 'Invoice Date': '2025-06-15', 'Invoice Number': 'INV-25041', 'Sales Rep': 'Kyaw Zin',   'Customer': 'Shwe Taung Transport', 'Product Code': 'INC-55B24L', 'Quantity Sold': 45, 'Sale Amount': 7560000,  'Discount%': 0.03, 'Discount amount': 226800, 'Sales after Discount': 7333200,  'TOTAL COGS (MYOB)': 5625000 },
+                    { 'Invoice Date': '2025-09-10', 'Invoice Number': 'INV-25089', 'Sales Rep': 'Su Myat',    'Customer': 'Golden Star Auto',     'Product Code': 'INC-N150',   'Quantity Sold': 20, 'Sale Amount': 9700000,  'Discount%': 0.04, 'Discount amount': 388000, 'Sales after Discount': 9312000,  'TOTAL COGS (MYOB)': 7360000 },
+                    { 'Invoice Date': '2025-12-05', 'Invoice Number': 'INV-25134', 'Sales Rep': 'Aung Ko',    'Customer': 'Yoma Fleet Service',   'Product Code': 'RCK-N200',   'Quantity Sold': 15, 'Sale Amount': 9600000,  'Discount%': 0.03, 'Discount amount': 288000, 'Sales after Discount': 9312000,  'TOTAL COGS (MYOB)': 7350000 },
+                    { 'Invoice Date': '2026-02-18', 'Invoice Number': 'INV-26022', 'Sales Rep': 'Thiri Nandar','Customer': 'Mandalay Express',     'Product Code': 'RCK-46B24L', 'Quantity Sold': 50, 'Sale Amount': 8750000,  'Discount%': 0.02, 'Discount amount': 175000, 'Sales after Discount': 8575000,  'TOTAL COGS (MYOB)': 6600000 },
+                    // FY 2026-2027 Sales (Apr 2026 - Mar 2027)
+                    { 'Invoice Date': '2026-04-14', 'Invoice Number': 'INV-26051', 'Sales Rep': 'Kyaw Zin',   'Customer': 'Golden Star Auto',     'Product Code': 'INC-55B24L', 'Quantity Sold': 42, 'Sale Amount': 7056000,  'Discount%': 0.03, 'Discount amount': 211680, 'Sales after Discount': 6844320,  'TOTAL COGS (MYOB)': 5376000 },
+                    { 'Invoice Date': '2026-04-26', 'Invoice Number': 'INV-26058', 'Sales Rep': 'Su Myat',    'Customer': 'Shwe Taung Transport', 'Product Code': 'INC-80D26L', 'Quantity Sold': 30, 'Sale Amount': 7050000,  'Discount%': 0.02, 'Discount amount': 141000, 'Sales after Discount': 6909000,  'TOTAL COGS (MYOB)': 5280000 },
+                    { 'Invoice Date': '2026-05-11', 'Invoice Number': 'INV-26067', 'Sales Rep': 'Aung Ko',    'Customer': 'Yoma Fleet Service',   'Product Code': 'INC-95D31R', 'Quantity Sold': 28, 'Sale Amount': 7980000,  'Discount%': 0.04, 'Discount amount': 319200, 'Sales after Discount': 7660800,  'TOTAL COGS (MYOB)': 6020000 },
+                    { 'Invoice Date': '2026-05-24', 'Invoice Number': 'INV-26074', 'Sales Rep': 'Thiri Nandar','Customer': 'Delta Logistics',      'Product Code': 'RCK-75D23L', 'Quantity Sold': 32, 'Sale Amount': 7744000,  'Discount%': 0.03, 'Discount amount': 232320, 'Sales after Discount': 7511680,  'TOTAL COGS (MYOB)': 5856000 },
+                    { 'Invoice Date': '2026-06-09', 'Invoice Number': 'INV-26085', 'Sales Rep': 'Kyaw Zin',   'Customer': 'Mandalay Express',     'Product Code': 'RCK-105D31L','Quantity Sold': 26, 'Sale Amount': 8190000,  'Discount%': 0.03, 'Discount amount': 245700, 'Sales after Discount': 7944300,  'TOTAL COGS (MYOB)': 6240000 },
+                    { 'Invoice Date': '2026-07-17', 'Invoice Number': 'INV-26099', 'Sales Rep': 'Su Myat',    'Customer': 'Aung Myin Trading',    'Product Code': 'INC-55B24L', 'Quantity Sold': 48, 'Sale Amount': 8064000,  'Discount%': 0.02, 'Discount amount': 161280, 'Sales after Discount': 7902720,  'TOTAL COGS (MYOB)': 6144000 },
+                    { 'Invoice Date': '2026-08-19', 'Invoice Number': 'INV-26112', 'Sales Rep': 'Aung Ko',    'Customer': 'Golden Star Auto',     'Product Code': 'RCK-46B24L', 'Quantity Sold': 46, 'Sale Amount': 8050000,  'Discount%': 0.03, 'Discount amount': 241500, 'Sales after Discount': 7808500,  'TOTAL COGS (MYOB)': 6164000 },
+                    { 'Invoice Date': '2026-09-12', 'Invoice Number': 'INV-26128', 'Sales Rep': 'Kyaw Zin',   'Customer': 'Shwe Taung Transport', 'Product Code': 'INC-N120',   'Quantity Sold': 22, 'Sale Amount': 8690000,  'Discount%': 0.04, 'Discount amount': 347600, 'Sales after Discount': 8342400,  'TOTAL COGS (MYOB)': 6644000 },
+                    { 'Invoice Date': '2026-10-08', 'Invoice Number': 'INV-26140', 'Sales Rep': 'Thiri Nandar','Customer': 'Yoma Fleet Service',   'Product Code': 'RCK-46B24L', 'Quantity Sold': 36, 'Sale Amount': 6300000,  'Discount%': 0.02, 'Discount amount': 126000, 'Sales after Discount': 6174000,  'TOTAL COGS (MYOB)': 4824000 },
+                    { 'Invoice Date': '2026-11-04', 'Invoice Number': 'INV-26153', 'Sales Rep': 'Su Myat',    'Customer': 'Delta Logistics',      'Product Code': 'RCK-N100',   'Quantity Sold': 21, 'Sale Amount': 7245000,  'Discount%': 0.03, 'Discount amount': 217350, 'Sales after Discount': 7027650,  'TOTAL COGS (MYOB)': 5565000 },
+                    { 'Invoice Date': '2026-11-18', 'Invoice Number': 'INV-26161', 'Sales Rep': 'Kyaw Zin',   'Customer': 'Mandalay Express',     'Product Code': 'INC-95D31R', 'Quantity Sold': 26, 'Sale Amount': 7410000,  'Discount%': 0.02, 'Discount amount': 148200, 'Sales after Discount': 7261800,  'TOTAL COGS (MYOB)': 5590000 }
+                ]
+            }
+        };
+
+        // =====================================================================
+        // 3. INITIALIZATION & WEB APP API CONNECTION
+        // =====================================================================
+        window.onload = function () {
+            document.addEventListener('click', function (e) {
+                if (e._insideMultiSelect) return;
+                if (openMultiSelectKey && !e.target.closest('[data-ms-wrapper]')) {
+                    openMultiSelectKey = null;
+                    multiSelectSearchTerm = '';
+                    renderMultiSelectBar();
+                }
+            });
+
+            // Restore saved UT Logo (or default built-in UT SVG)
+            const savedLogo = localStorage.getItem(STORAGE_KEY_LOGO) || '';
+            applyBrandLogo(savedLogo);
+
+            // Check ?api=... query param or saved localStorage Web App URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const queryApiUrl = urlParams.get('api');
+            if (queryApiUrl && queryApiUrl.startsWith('http')) {
+                localStorage.setItem(STORAGE_KEY_API, queryApiUrl.trim());
+            }
+
+            const savedApiUrl = localStorage.getItem(STORAGE_KEY_API) || '';
+            if (savedApiUrl) {
+                ingestPayload(SAMPLE_API_PAYLOAD);
+                fetchFromWebApp(savedApiUrl);
+            } else {
+                ingestPayload(SAMPLE_API_PAYLOAD);
+                setConnectionStatus('demo', 'Sample Dataset');
+            }
+        };
+
+        // =====================================================================
+        // 3B. UT BRAND LOGO HELPERS
+        // =====================================================================
+        function normalizeLogoUrl(rawUrl) {
+            const url = String(rawUrl || '').trim();
+            if (!url) return '';
+            const driveFileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+            if (driveFileMatch) {
+                return `https://drive.google.com/thumbnail?id=${driveFileMatch[1]}&sz=w400`;
+            }
+            const driveIdMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+            if (url.includes('drive.google.com') && driveIdMatch) {
+                return `https://drive.google.com/thumbnail?id=${driveIdMatch[1]}&sz=w400`;
+            }
+            return url;
+        }
+
+        function applyBrandLogo(rawUrl) {
+            const imgEl = document.getElementById('customBrandLogoImg');
+            const svgEl = document.getElementById('defaultUtSvgLogo');
+            if (!imgEl || !svgEl) return;
+
+            const normalized = normalizeLogoUrl(rawUrl);
+            if (normalized) {
+                imgEl.src = normalized;
+                imgEl.classList.remove('hidden');
+                svgEl.classList.add('hidden');
+            } else {
+                imgEl.removeAttribute('src');
+                imgEl.classList.add('hidden');
+                svgEl.classList.remove('hidden');
+            }
+        }
+
+        function handleBrandLogoError() {
+            const imgEl = document.getElementById('customBrandLogoImg');
+            const svgEl = document.getElementById('defaultUtSvgLogo');
+            if (!imgEl || !imgEl.getAttribute('src')) return;
+            imgEl.removeAttribute('src');
+            imgEl.classList.add('hidden');
+            if (svgEl) svgEl.classList.remove('hidden');
+            showToast('Logo ပုံလင့်ခ် ဖွင့်မရပါသဖြင့် မူလ UT Logo ကို ပြန်ပြထားပါသည်။', true);
+        }
+
+        function saveCustomLogoOnly() {
+            const input = document.getElementById('customLogoUrlInput');
+            const rawUrl = input ? input.value.trim() : '';
+            localStorage.setItem(STORAGE_KEY_LOGO, rawUrl);
+            applyBrandLogo(rawUrl);
+            showToast(rawUrl ? 'UT Logo ပုံ အသစ် ပြောင်းလဲပြီးပါပြီ။' : 'မူလ UT Vector Logo သို့ ပြန်ပြောင်းပြီးပါပြီ။', false);
+        }
+
+        // =====================================================================
+        // 3C. API CONNECTION MODAL & LIVE GOOGLE SHEET FETCH
+        // =====================================================================
+        function setConnectionStatus(state, labelText) {
+            const badge = document.getElementById('connectionBadge');
+            const dot = document.getElementById('connectionDot');
+            const text = document.getElementById('connectionText');
+            const sync = document.getElementById('lastSyncText');
+            if (!badge || !dot || !text) return;
+
+            if (sync && labelText) sync.textContent = labelText;
+
+            if (state === 'live') {
+                badge.className = 'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+                dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400';
+                text.textContent = 'Live Sheet API';
+            } else if (state === 'loading') {
+                badge.className = 'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30';
+                dot.className = 'w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping';
+                text.textContent = 'Syncing...';
+            } else if (state === 'error') {
+                badge.className = 'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30';
+                dot.className = 'w-1.5 h-1.5 rounded-full bg-rose-400';
+                text.textContent = 'API Error';
+            } else {
+                badge.className = 'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30';
+                dot.className = 'w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse';
+                text.textContent = 'Demo Mode';
+            }
+        }
+
+        function openApiModal() {
+            const modal = document.getElementById('apiModal');
+            const urlInput = document.getElementById('webAppUrlInput');
+            const logoInput = document.getElementById('customLogoUrlInput');
+            const statusBox = document.getElementById('apiModalStatus');
+
+            if (urlInput) urlInput.value = localStorage.getItem(STORAGE_KEY_API) || '';
+            if (logoInput) logoInput.value = localStorage.getItem(STORAGE_KEY_LOGO) || '';
+            if (statusBox) statusBox.classList.add('hidden');
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeApiModal() {
+            const modal = document.getElementById('apiModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function fetchFromWebApp(url) {
+            const refreshIcon = document.getElementById('refreshIcon');
+            if (refreshIcon) refreshIcon.classList.add('animate-spin');
+            setConnectionStatus('loading', 'Fetching Google Sheet...');
+
+            try {
+                const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const payload = await response.json();
+                if (!payload || !payload.data) {
+                    throw new Error('Invalid JSON structure from Web App');
+                }
+
+                ingestPayload(payload);
+                const syncStamp = payload.updatedAt || new Date().toLocaleTimeString();
+                setConnectionStatus('live', `Synced: ${syncStamp}`);
+                return true;
+            } catch (err) {
+                console.error('Web App Fetch Error:', err);
+                setConnectionStatus('error', 'Connection Failed');
+                throw err;
+            } finally {
+                if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+            }
+        }
+
+        async function connectAndSaveApi() {
+            const urlInput = document.getElementById('webAppUrlInput');
+            const logoInput = document.getElementById('customLogoUrlInput');
+            const statusBox = document.getElementById('apiModalStatus');
+            const btn = document.getElementById('btnConnectSave');
+
+            const url = urlInput ? urlInput.value.trim() : '';
+            if (logoInput) {
+                const logoUrl = logoInput.value.trim();
+                localStorage.setItem(STORAGE_KEY_LOGO, logoUrl);
+                applyBrandLogo(logoUrl);
+            }
+
+            if (!url || !url.startsWith('http')) {
+                statusBox.className = 'rounded-lg p-2.5 text-xs bg-rose-500/15 border border-rose-500/40 text-rose-300';
+                statusBox.textContent = 'မှန်ကန်သော Google Apps Script Web App URL (https://...) ကို ထည့်သွင်းပါ။';
+                statusBox.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'ချိတ်ဆက်နေပါသည်...';
+            statusBox.className = 'rounded-lg p-2.5 text-xs bg-cyan-500/15 border border-cyan-500/40 text-cyan-200';
+            statusBox.textContent = 'Google Sheet မှ SALE, PURCHASE & INVENTORY နှင့် PRODUCT ဇယားများကို ဆွဲယူနေပါသည်...';
+            statusBox.classList.remove('hidden');
+
+            try {
+                await fetchFromWebApp(url);
+                localStorage.setItem(STORAGE_KEY_API, url);
+                closeApiModal();
+                showToast('Google Sheet Web App API နှင့် အောင်မြင်စွာ ချိတ်ဆက်ပြီးပါပြီ။', false);
+            } catch (err) {
+                statusBox.className = 'rounded-lg p-2.5 text-xs bg-rose-500/15 border border-rose-500/40 text-rose-300';
+                statusBox.textContent = `ချိတ်ဆက်မှု မအောင်မြင်ပါ (${err.message})။ Apps Script Deploy တွင် "Who has access: Anyone" ထားရှိကြောင်း စစ်ဆေးပါ။`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'ချိတ်ဆက်ပြီး ဒေတာဆွဲယူမည်';
+            }
+        }
+
+        async function refreshLiveData() {
+            const savedUrl = localStorage.getItem(STORAGE_KEY_API) || '';
+            if (!savedUrl) {
+                ingestPayload(SAMPLE_API_PAYLOAD);
+                setConnectionStatus('demo', 'Sample Dataset');
+                showToast('Demo ဒေတာကို ပြန်လည်စတင်ထားပါသည်။ Live Sheet ချိတ်ရန် "API ချိတ်ဆက်ရန်" ကို နှိပ်ပါ။', false);
+                return;
+            }
+            try {
+                await fetchFromWebApp(savedUrl);
+                showToast('Google Sheet မှ နောက်ဆုံးအချက်အလက်များ Update ဖြစ်ပါပြီ။', false);
+            } catch (err) {
+                showToast('Google Sheet မှ ဒေတာဆွဲယူရာတွင် အမှားဖြစ်ပေါ်နေပါသည်။', true);
+            }
+        }
+
+        function loadDemoDataset() {
+            localStorage.removeItem(STORAGE_KEY_API);
+            ingestPayload(SAMPLE_API_PAYLOAD);
+            setConnectionStatus('demo', 'Sample Dataset');
+            closeApiModal();
+            showToast('Demo Dataset သို့ ပြောင်းလဲပြီးပါပြီ။', false);
+        }
+
+        // =====================================================================
+        // 4. RELATIONAL DATA JOIN & APR–MAR BUDGET YEAR ENGINE
+        // =====================================================================
+        function parseNum(val) {
+            if (typeof val === 'number') return isFinite(val) ? val : 0;
+            if (val === null || val === undefined) return 0;
+            const cleaned = String(val).replace(/,/g, '').replace(/%/g, '').trim();
+            if (!cleaned || cleaned.startsWith('#')) return 0;
+            const n = parseFloat(cleaned);
+            return isFinite(n) ? n : 0;
+        }
+
+        function parseFiscalDate(raw) {
+            let year = 2026, monthIdx = 3, day = 1;
+            const str = String(raw || '').trim();
+
+            const isoMatch = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+            const dmyMatch = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+
+            if (isoMatch) {
+                year = parseInt(isoMatch[1], 10);
+                monthIdx = parseInt(isoMatch[2], 10) - 1;
+                day = parseInt(isoMatch[3], 10);
+            } else if (dmyMatch) {
+                day = parseInt(dmyMatch[1], 10);
+                monthIdx = parseInt(dmyMatch[2], 10) - 1;
+                year = parseInt(dmyMatch[3], 10);
+            } else if (str) {
+                const parsed = new Date(str);
+                if (!isNaN(parsed.getTime())) {
+                    year = parsed.getFullYear();
+                    monthIdx = parsed.getMonth();
+                    day = parsed.getDate();
+                }
+            }
+
+            if (monthIdx < 0 || monthIdx > 11) monthIdx = 3;
+            const pad = n => String(n).padStart(2, '0');
+            const dateStr = `${year}-${pad(monthIdx + 1)}-${pad(day)}`;
+            const timestamp = new Date(year, monthIdx, day).getTime();
+            const monthName = CAL_MONTH_NAMES[monthIdx];
+
+            // Apr–Mar Budget Year (Apr=3 .. Dec=11 -> FY Y-(Y+1); Jan=0 .. Mar=2 -> FY (Y-1)-Y)
+            const fyStart = monthIdx >= 3 ? year : year - 1;
+            const fyEndShort = String(fyStart + 1).slice(-2);
+            const fiscalYear = `FY ${fyStart}-${fyEndShort}`;
+
+            // Quarter (Apr–Mar)
+            let quarter = 'Q1';
+            if (monthIdx >= 3 && monthIdx <= 5) quarter = 'Q1';
+            else if (monthIdx >= 6 && monthIdx <= 8) quarter = 'Q2';
+            else if (monthIdx >= 9 && monthIdx <= 11) quarter = 'Q3';
+            else quarter = 'Q4';
+
+            return { dateStr, timestamp, monthName, fiscalYear, quarter };
+        }
+
+        function resetFilterObject() {
+            Object.keys(filters).forEach(k => {
+                if (filters[k] instanceof Set) filters[k].clear();
+            });
+        }
+
+        function ingestPayload(payload) {
+            const data = (payload && payload.data) ? payload.data : {};
+            const rawProducts = Array.isArray(data['PRODUCT']) ? data['PRODUCT'] : [];
+            const rawPurchases = Array.isArray(data['PURCHASE & INVENTORY']) ? data['PURCHASE & INVENTORY'] : [];
+            const rawSales = Array.isArray(data['SALE']) ? data['SALE'] : [];
+
+            // 1. Index PRODUCT master table by Product Code
+            productMap = {};
+            rawProducts.forEach(p => {
+                const code = String(p['Product Code'] || '').trim();
+                if (!code) return;
+                productMap[code] = {
+                    productCode: code,
+                    productDesc: String(p['Product Description'] || code).trim(),
+                    jisCode: String(p['JIS Code'] || '').trim(),
+                    size: String(p['Size'] || 'Unknown').trim() || 'Unknown',
+                    ah: parseNum(p['AH']),
+                    brand: String(p['Brand'] || 'Unknown').trim() || 'Unknown',
+                    category: String(p['Category'] || 'Unknown').trim() || 'Unknown',
+                    unitPrice: parseNum(p['Unit Price']),
+                    avgUnitCost: parseNum(p['Avg. Unit Cost'])
+                };
+            });
+
+            // 2. Join PURCHASE & INVENTORY with PRODUCT
+            joinedPurchases = rawPurchases.map(r => {
+                const code = String(r['Product Code'] || '').trim();
+                const prod = productMap[code] || {};
+                const dt = parseFiscalDate(r['Receiving Date']);
+
+                const size = String(r['Size'] || prod.size || 'Unknown').trim() || 'Unknown';
+                const ah = parseNum(r['AH']) || prod.ah || 0;
+                const brand = String(r['Brand'] || prod.brand || 'Unknown').trim() || 'Unknown';
+                const category = String(r['Category'] || prod.category || 'Unknown').trim() || 'Unknown';
+                const productDesc = String(r['Product Description'] || prod.productDesc || code).trim();
+                const unitPrice = prod.unitPrice || 0;
+
+                const quantity = parseNum(r['Quantity']);
+                const costPrice = parseNum(r['Cost Price']);
+                const costTotal = parseNum(r['Cost Total']) || (quantity * costPrice);
+                const soldQty = parseNum(r['Sold Qty']);
+                const balanceQty = parseNum(r['Balance Qty']);
+                const valuation = (r['Valuation'] !== undefined && r['Valuation'] !== '' && r['Valuation'] !== null)
+                    ? parseNum(r['Valuation'])
+                    : (balanceQty * costPrice);
+                const agingMonth = parseNum(r['Aging (Month)']);
+                const agingBucket = agingMonth <= 3 ? '0-3M' : (agingMonth <= 6 ? '4-6M' : (agingMonth <= 12 ? '7-12M' : '>12M'));
+                const saleValue = parseNum(r['Sale Value']) || (quantity * unitPrice);
+                const balRetailValue = balanceQty * unitPrice;
+
+                return {
+                    ...dt,
+                    status: String(r['Status'] || (balanceQty > 0 ? 'Active' : 'Closed')).trim(),
+                    poNo: String(r['PO No.'] || 'N/A').trim(),
+                    productCode: code,
+                    productDesc,
+                    size,
+                    ah,
+                    brand,
+                    category,
+                    quantity,
+                    costPrice,
+                    costTotal,
+                    soldQty,
+                    balanceQty,
+                    valuation,
+                    agingMonth,
+                    agingBucket,
+                    saleValue,
+                    balRetailValue
+                };
+            });
+
+            // 3. Join SALE with PRODUCT
+            joinedSales = rawSales.map(r => {
+                const code = String(r['Product Code'] || '').trim();
+                const prod = productMap[code] || {};
+                const dt = parseFiscalDate(r['Invoice Date']);
+
+                const size = String(r['Size'] || prod.size || 'Unknown').trim() || 'Unknown';
+                const ah = parseNum(r['AH']) || prod.ah || 0;
+                const brand = String(r['Brand'] || prod.brand || 'Unknown').trim() || 'Unknown';
+                const category = String(r['Category'] || prod.category || 'Unknown').trim() || 'Unknown';
+                const productDesc = String(r['Product Description'] || prod.productDesc || code).trim();
+
+                const qtySold = parseNum(r['Quantity Sold']);
+                const saleAmount = parseNum(r['Sale Amount']);
+                const discountAmt = parseNum(r['Discount amount']);
+                const netSales = (r['Sales after Discount'] !== undefined && r['Sales after Discount'] !== '' && r['Sales after Discount'] !== null)
+                    ? parseNum(r['Sales after Discount'])
+                    : (saleAmount - discountAmt);
+                const totalCogs = parseNum(r['TOTAL COGS (MYOB)']);
+                const grossProfit = netSales - totalCogs;
+                const gmPct = netSales > 0 ? (grossProfit / netSales) * 100 : 0;
+
+                return {
+                    ...dt,
+                    invoiceNo: String(r['Invoice Number'] || 'N/A').trim(),
+                    salesRep: String(r['Sales Rep'] || 'Unassigned').trim() || 'Unassigned',
+                    customer: String(r['Customer'] || 'Walk-in').trim() || 'Walk-in',
+                    productCode: code,
+                    productDesc,
+                    size,
+                    ah,
+                    brand,
+                    category,
+                    qtySold,
+                    saleAmount,
+                    discountAmt,
+                    netSales,
+                    totalCogs,
+                    grossProfit,
+                    gmPct
+                };
+            });
+
+            // 4. Build Multi-Select Slicer Options Catalog
+            const fySet = new Set();
+            const brandSet = new Set();
+            const catSet = new Set();
+            const sizeSet = new Set();
+            const ahSet = new Set();
+            const repSet = new Set();
+            const custSet = new Set();
+
+            [...joinedPurchases, ...joinedSales].forEach(r => {
+                if (r.fiscalYear) fySet.add(r.fiscalYear);
+                if (r.brand && r.brand !== 'Unknown') brandSet.add(r.brand);
+                if (r.category && r.category !== 'Unknown') catSet.add(r.category);
+                if (r.size && r.size !== 'Unknown') sizeSet.add(r.size);
+                if (r.ah && r.ah > 0) ahSet.add(Number(r.ah));
+            });
+
+            joinedSales.forEach(s => {
+                if (s.salesRep) repSet.add(s.salesRep);
+                if (s.customer) custSet.add(s.customer);
+            });
+
+            slicerOptionsCatalog.fy = [...fySet].sort().reverse().map(v => ({ val: v, label: v }));
+            slicerOptionsCatalog.brand = [...brandSet].sort().map(v => ({ val: v, label: v }));
+            slicerOptionsCatalog.category = [...catSet].sort().map(v => ({ val: v, label: v }));
+            slicerOptionsCatalog.size = [...sizeSet].sort().map(v => ({ val: v, label: v }));
+            slicerOptionsCatalog.ah = [...ahSet].sort((a, b) => a - b).map(v => ({ val: String(v), label: `${v}Ah` }));
+            slicerOptionsCatalog.rep = [...repSet].sort().map(v => ({ val: v, label: v }));
+            slicerOptionsCatalog.customer = [...custSet].sort().map(v => ({ val: v, label: v }));
+
+            resetFilterObject();
+            if (compareState.enabled) initCompareOptions();
+            switchModuleTab(activeModule);
+        }
+
+        // =====================================================================
+        // 5. MODULE TAB NAVIGATION & MULTI-SELECT SLICERS
+        // =====================================================================
+        function switchModuleTab(tabName) {
+            activeModule = tabName;
+
+            const tabStyles = {
+                PURCHASE: { id: 'navTabPurchase', active: 'bg-pbi-violet text-white shadow-md shadow-violet-500/25' },
+                INVENTORY: { id: 'navTabInventory', active: 'bg-pbi-amber text-slate-950 shadow-md shadow-amber-500/25' },
+                SALE: { id: 'navTabSale', active: 'bg-pbi-cyan text-slate-950 shadow-md shadow-cyan-500/25' }
+            };
+
+            Object.keys(tabStyles).forEach(key => {
+                const btn = document.getElementById(tabStyles[key].id);
+                if (!btn) return;
+                if (key === activeModule) {
+                    btn.className = `flex-1 lg:flex-initial flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${tabStyles[key].active}`;
+                } else {
+                    btn.className = 'flex-1 lg:flex-initial flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition cursor-pointer';
+                }
+            });
+
+            const invControls = document.getElementById('inventoryBatchControls');
+            if (invControls) {
+                if (activeModule === 'INVENTORY') {
+                    invControls.classList.remove('hidden');
+                    invControls.classList.add('flex');
+                } else {
+                    invControls.classList.add('hidden');
+                    invControls.classList.remove('flex');
+                }
+            }
+
+            renderMultiSelectBar();
+            renderActiveModule();
+        }
+
+        const SLICER_META = [
+            { key: 'fy',       title: 'Budget Year', icon: 'fa-solid fa-calendar-check text-pbi-cyan' },
+            { key: 'quarter',  title: 'Quarter',     icon: 'fa-solid fa-chart-pie text-pbi-violet' },
+            { key: 'month',    title: 'Month',       icon: 'fa-regular fa-calendar text-sky-400' },
+            { key: 'brand',    title: 'Brand',       icon: 'fa-solid fa-tag text-pbi-emerald' },
+            { key: 'category', title: 'Category',    icon: 'fa-solid fa-layer-group text-pbi-amber' },
+            { key: 'size',     title: 'Size',        icon: 'fa-solid fa-ruler-combined text-cyan-300' },
+            { key: 'ah',       title: 'Ah Rating',   icon: 'fa-solid fa-bolt text-amber-300' },
+            { key: 'rep',      title: 'Sales Rep',   icon: 'fa-solid fa-user-tie text-rose-400' },
+            { key: 'customer', title: 'Customer',    icon: 'fa-solid fa-building-user text-teal-400' }
+        ];
+
+        function escapeHtmlAttr(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function renderMultiSelectBar() {
+            const container = document.getElementById('multiSlicerContainer');
+            if (!container) return;
+
+            container.innerHTML = SLICER_META.map(meta => {
+                const selectedSet = filters[meta.key];
+                const options = slicerOptionsCatalog[meta.key] || [];
+                const count = selectedSet.size;
+                const isOpen = openMultiSelectKey === meta.key;
+                const isDisabled = ((meta.key === 'rep' || meta.key === 'customer') && activeModule !== 'SALE');
+
+                let summaryText = `${meta.title}: All`;
+                if (count === 1) {
+                    const onlyVal = [...selectedSet][0];
+                    const found = options.find(o => o.val === onlyVal);
+                    summaryText = `${meta.title}: ${found ? found.label : onlyVal}`;
+                } else if (count > 1) {
+                    summaryText = `${meta.title}: ${count} selected`;
+                }
+
+                const btnBorder = count > 0
+                    ? 'border-pbi-cyan/60 bg-pbi-cyan/15 text-white'
+                    : 'border-slate-700/80 bg-pbi-elevated/90 text-slate-100';
+
+                let popoverHtml = '';
+                if (isOpen && !isDisabled) {
+                    const searchLower = multiSelectSearchTerm.trim().toLowerCase();
+                    const visibleOptions = searchLower
+                        ? options.filter(opt => opt.label.toLowerCase().includes(searchLower))
+                        : options;
+
+                    const itemsHtml = visibleOptions.map(opt => {
+                        const checked = selectedSet.has(opt.val);
+                        const safeAttrVal = escapeHtmlAttr(opt.val);
+                        const boxStyle = checked
+                            ? 'bg-pbi-cyan border-pbi-cyan text-slate-950'
+                            : 'bg-slate-900 border-slate-600 text-transparent';
+                        return `
+                            <button type="button" data-ms-key="${meta.key}" data-ms-val="${safeAttrVal}" onclick="handleMultiSelectItemClick(event, this)" class="w-full text-left flex items-center justify-between gap-2 px-2.5 py-1.5 rounded hover:bg-slate-800/90 cursor-pointer text-xs transition ${checked ? 'text-pbi-cyan font-semibold bg-pbi-cyan/10' : 'text-slate-200'}">
+                                <span class="flex items-center gap-2 truncate">
+                                    <span class="w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition ${boxStyle}">
+                                        <i class="fa-solid fa-check text-[9px]"></i>
+                                    </span>
+                                    <span class="truncate">${escapeHtmlAttr(opt.label)}</span>
+                                </span>
+                            </button>
+                        `;
+                    }).join('');
+
+                    const searchBoxHtml = options.length > 5 ? `
+                        <div class="px-1.5 pb-1.5">
+                            <input id="msSearchInput_${meta.key}" type="text" value="${escapeHtmlAttr(multiSelectSearchTerm)}" oninput="onMultiSelectSearch(this.value)" placeholder="Search ${meta.title}..." class="w-full bg-[#080D19] border border-slate-700/80 rounded px-2 py-1 text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-pbi-cyan">
+                        </div>
+                    ` : '';
+
+                    popoverHtml = `
+                        <div onclick="event._insideMultiSelect = true; event.stopPropagation();" class="ms-popover absolute left-0 top-full mt-1 w-60 z-50 p-1.5">
+                            <div class="flex items-center justify-between px-2 py-1 border-b border-slate-800 mb-1.5 text-[10px]">
+                                <span class="font-bold uppercase tracking-wider text-slate-400">Multi-Select ${meta.title}</span>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" onclick="event._insideMultiSelect = true; selectAllMultiOption('${meta.key}')" class="text-pbi-cyan hover:underline cursor-pointer">All</button>
+                                    <button type="button" onclick="event._insideMultiSelect = true; clearMultiOption('${meta.key}')" class="text-rose-400 hover:underline cursor-pointer">Clear</button>
+                                </div>
+                            </div>
+                            ${searchBoxHtml}
+                            <div class="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+                                ${itemsHtml || '<div class="py-3 text-center text-xs text-slate-500">No matching options</div>'}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div data-ms-wrapper onclick="event._insideMultiSelect = true;" class="relative ${isDisabled ? 'opacity-45 pointer-events-none' : ''}">
+                        <button type="button" onclick="toggleMultiSelectPopover(event, '${meta.key}')" class="flex items-center gap-1.5 border ${btnBorder} rounded-md px-2 py-1 text-[11px] sm:text-xs font-medium hover:border-slate-500 transition cursor-pointer">
+                            <i class="${meta.icon} text-[11px]"></i>
+                            <span class="max-w-[135px] truncate">${summaryText}</span>
+                            <i class="fa-solid fa-chevron-down text-[9px] text-slate-400 ml-0.5"></i>
+                        </button>
+                        ${popoverHtml}
+                    </div>
+                `;
+            }).join('');
+
+            if (openMultiSelectKey) {
+                const searchInput = document.getElementById(`msSearchInput_${openMultiSelectKey}`);
+                if (searchInput) {
+                    searchInput.focus();
+                    const len = searchInput.value.length;
+                    searchInput.setSelectionRange(len, len);
+                }
+            }
+        }
+
+        function onMultiSelectSearch(val) {
+            multiSelectSearchTerm = val;
+            renderMultiSelectBar();
+        }
+
+        function toggleMultiSelectPopover(event, key) {
+            if (event) {
+                event._insideMultiSelect = true;
+                event.stopPropagation();
+            }
+            if (openMultiSelectKey === key) {
+                openMultiSelectKey = null;
+                multiSelectSearchTerm = '';
+            } else {
+                openMultiSelectKey = key;
+                multiSelectSearchTerm = '';
+            }
+            renderMultiSelectBar();
+        }
+
+        function handleMultiSelectItemClick(event, el) {
+            if (event) {
+                event._insideMultiSelect = true;
+                event.stopPropagation();
+            }
+            const key = el.getAttribute('data-ms-key');
+            const val = el.getAttribute('data-ms-val');
+            if (!key || val === null) return;
+            toggleMultiSelectOption(key, val);
+        }
+
+        function toggleMultiSelectOption(key, val) {
+            const set = filters[key];
+            if (set.has(val)) set.delete(val);
+            else set.add(val);
+            renderMultiSelectBar();
+            renderActiveModule();
+        }
+
+        function selectAllMultiOption(key) {
+            const options = slicerOptionsCatalog[key] || [];
+            filters[key] = new Set(options.map(o => o.val));
+            renderMultiSelectBar();
+            renderActiveModule();
+        }
+
+        function clearMultiOption(key) {
+            filters[key].clear();
+            renderMultiSelectBar();
+            renderActiveModule();
+        }
+
+        function toggleCrossFilter(key, val) {
+            const set = filters[key];
+            if (set.has(val)) set.delete(val);
+            else set.add(val);
+            renderMultiSelectBar();
+            renderActiveModule();
+        }
+
+        function resetAllFilters() {
+            resetFilterObject();
+            openMultiSelectKey = null;
+            multiSelectSearchTerm = '';
+            renderMultiSelectBar();
+            document.getElementById('detailSearchInput').value = '';
+            renderActiveModule();
+            showToast('Filter အားလုံး ပြန်လည်ရှင်းလင်းပြီးပါပြီ။', false);
+        }
+
+        // =====================================================================
+        // 5B. SIDE-BY-SIDE COMPARE MODE ENGINE (FY YoY / QUARTER / BRAND)
+        // =====================================================================
+        function toggleCompareMode() {
+            compareState.enabled = !compareState.enabled;
+            const btn = document.getElementById('btnToggleCompare');
+            const strip = document.getElementById('compareStrip');
+
+            if (compareState.enabled) {
+                btn.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold border border-pbi-cyan bg-pbi-cyan text-slate-950 shadow-sm transition cursor-pointer';
+                btn.innerHTML = `<i class="fa-solid fa-code-compare text-[11px]"></i><span>Compare: ON</span>`;
+                strip.classList.remove('hidden');
+                strip.classList.add('flex');
+                initCompareOptions();
+            } else {
+                btn.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold border border-slate-700 bg-pbi-elevated text-slate-200 hover:border-pbi-cyan hover:text-white transition cursor-pointer';
+                btn.innerHTML = `<i class="fa-solid fa-code-compare text-pbi-cyan text-[11px]"></i><span>Compare: Off</span>`;
+                strip.classList.add('hidden');
+                strip.classList.remove('flex');
+            }
+            renderActiveModule();
+        }
+
+        function initCompareOptions() {
+            const dim = compareState.dimension;
+            const opts = slicerOptionsCatalog[dim.toLowerCase()] || [];
+            const selA = document.getElementById('compareTargetA');
+            const selB = document.getElementById('compareTargetB');
+            if (!selA || !selB) return;
+
+            selA.innerHTML = opts.map(o => `<option value="${o.val}" class="bg-pbi-card">${o.label}</option>`).join('');
+            selB.innerHTML = opts.map(o => `<option value="${o.val}" class="bg-pbi-card">${o.label}</option>`).join('');
+
+            if (opts.length >= 2) {
+                if (!opts.some(o => o.val === compareState.targetA)) compareState.targetA = opts[0].val;
+                if (!opts.some(o => o.val === compareState.targetB) || compareState.targetB === compareState.targetA) {
+                    compareState.targetB = opts[1].val;
+                }
+            } else if (opts.length === 1) {
+                compareState.targetA = opts[0].val;
+                compareState.targetB = opts[0].val;
+            }
+
+            selA.value = compareState.targetA;
+            selB.value = compareState.targetB;
+        }
+
+        function onCompareDimensionChange() {
+            compareState.dimension = document.getElementById('compareDimension').value;
+            compareState.targetA = '';
+            compareState.targetB = '';
+            initCompareOptions();
+            renderActiveModule();
+        }
+
+        function onCompareSelectionChange() {
+            compareState.targetA = document.getElementById('compareTargetA').value;
+            compareState.targetB = document.getElementById('compareTargetB').value;
+            renderActiveModule();
+        }
+
+        function setInventoryBatchMode(activeOnly) {
+            invActiveOnly = activeOnly;
+            const btnAct = document.getElementById('btnInvActiveOnly');
+            const btnAll = document.getElementById('btnInvAllBatches');
+            if (invActiveOnly) {
+                btnAct.className = 'px-2 py-0.5 rounded bg-pbi-amber text-slate-950 font-bold transition cursor-pointer';
+                btnAll.className = 'px-2 py-0.5 rounded text-slate-400 hover:text-white transition cursor-pointer';
+            } else {
+                btnAll.className = 'px-2 py-0.5 rounded bg-pbi-amber text-slate-950 font-bold transition cursor-pointer';
+                btnAct.className = 'px-2 py-0.5 rounded text-slate-400 hover:text-white transition cursor-pointer';
+            }
+            renderActiveModule();
+        }
+
+        function toggleInventoryPeriodFilter() {
+            invRespectPeriod = !invRespectPeriod;
+            const btn = document.getElementById('btnInvRespectPeriod');
+            if (invRespectPeriod) {
+                btn.className = 'px-2 py-1 rounded-md text-[10px] font-semibold border border-pbi-cyan/60 bg-pbi-cyan/15 text-pbi-cyan transition cursor-pointer';
+                btn.innerHTML = `<i class="fa-regular fa-clock mr-1"></i><span>Recv Period: On</span>`;
+            } else {
+                btn.className = 'px-2 py-1 rounded-md text-[10px] font-semibold border border-slate-700 bg-pbi-elevated text-slate-300 hover:text-white transition cursor-pointer';
+                btn.innerHTML = `<i class="fa-regular fa-clock mr-1 text-pbi-cyan"></i><span>Recv Period: Off</span>`;
+            }
+            renderActiveModule();
+        }
+
+        function renderCrossFilterBadges() {
+            const container = document.getElementById('crossFilterBadges');
+            const activeChips = [];
+
+            const labelMap = {
+                fy: 'FY',
+                quarter: 'Qtr',
+                month: 'Month',
+                brand: 'Brand',
+                category: 'Cat',
+                size: 'Size',
+                ah: 'Ah',
+                rep: 'Rep',
+                productCode: 'Model',
+                customer: 'Cust',
+                poNo: 'PO',
+                agingBucket: 'Aging'
+            };
+
+            Object.keys(labelMap).forEach(k => {
+                const set = filters[k];
+                if (set && set.size > 0) {
+                    set.forEach(val => {
+                        const dispVal = k === 'ah' ? `${val}Ah` : val;
+                        activeChips.push({ key: k, rawVal: val, text: `${labelMap[k]}: ${dispVal}` });
+                    });
+                }
+            });
+
+            if (activeChips.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = activeChips.map(c => `
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-pbi-cyan/15 border border-pbi-cyan/40 text-pbi-cyan text-[10px] font-semibold">
+                    <span>${c.text}</span>
+                    <button onclick="toggleCrossFilter('${c.key}', '${String(c.rawVal).replace(/'/g, "\\'")}')" class="hover:text-white cursor-pointer" title="Clear filter">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </span>
+            `).join('');
+        }
+
+        // =====================================================================
+        // 6. FILTERED DATA SELECTORS PER MODULE (MULTI-SELECT & COMPARE READY)
+        // =====================================================================
+        function matchesSet(set, val) {
+            return !set || set.size === 0 || set.has(val);
+        }
+
+        function getFilteredPurchases(overrideDimKey = null, overrideDimVal = null) {
+            return joinedPurchases.filter(r => {
+                if (overrideDimKey === 'FY') { if (r.fiscalYear !== overrideDimVal) return false; }
+                else if (!matchesSet(filters.fy, r.fiscalYear)) return false;
+
+                if (overrideDimKey === 'QUARTER') { if (r.quarter !== overrideDimVal) return false; }
+                else if (!matchesSet(filters.quarter, r.quarter)) return false;
+
+                if (!matchesSet(filters.month, r.monthName)) return false;
+
+                if (overrideDimKey === 'BRAND') { if (r.brand !== overrideDimVal) return false; }
+                else if (!matchesSet(filters.brand, r.brand)) return false;
+
+                if (!matchesSet(filters.category, r.category)) return false;
+                if (!matchesSet(filters.size, r.size)) return false;
+                if (!matchesSet(filters.ah, String(r.ah))) return false;
+                if (!matchesSet(filters.productCode, r.productCode)) return false;
+                if (!matchesSet(filters.poNo, r.poNo)) return false;
+                return true;
+            });
+        }
+
+        function getFilteredInventory(overrideDimKey = null, overrideDimVal = null) {
+            return joinedPurchases.filter(r => {
+                if (invActiveOnly && r.balanceQty <= 0) return false;
+
+                if (overrideDimKey === 'FY') { if (r.fiscalYear !== overrideDimVal) return false; }
+                else if (invRespectPeriod && !matchesSet(filters.fy, r.fiscalYear)) return false;
+
+                if (overrideDimKey === 'QUARTER') { if (r.quarter !== overrideDimVal) return false; }
+                else if (invRespectPeriod && !matchesSet(filters.quarter, r.quarter)) return false;
+
+                if (invRespectPeriod && !matchesSet(filters.month, r.monthName)) return false;
+
+                if (overrideDimKey === 'BRAND') { if (r.brand !== overrideDimVal) return false; }
+                else if (!matchesSet(filters.brand, r.brand)) return false;
+
+                if (!matchesSet(filters.category, r.category)) return false;
+                if (!matchesSet(filters.size, r.size)) return false;
+                if (!matchesSet(filters.ah, String(r.ah))) return false;
+                if (!matchesSet(filters.productCode, r.productCode)) return false;
+                if (!matchesSet(filters.agingBucket, r.agingBucket)) return false;
+                return true;
+            });
+        }
+
+        function getFilteredSales(overrideDimKey = null, overrideDimVal = null) {
+            return joinedSales.filter(r => {
+                if (overrideDimKey === 'FY') { if (r.fiscalYear !== overrideDimVal) return false; }
+                else if (!matchesSet(filters.fy, r.fiscalYear)) return false;
+
+                if (overrideDimKey === 'QUARTER') { if (r.quarter !== overrideDimVal) return false; }
+                else if (!matchesSet(filters.quarter, r.quarter)) return false;
+
+                if (!matchesSet(filters.month, r.monthName)) return false;
+
+                if (overrideDimKey === 'BRAND') { if (r.brand !== overrideDimVal) return false; }
+                else if (!matchesSet(filters.brand, r.brand)) return false;
+
+                if (!matchesSet(filters.category, r.category)) return false;
+                if (!matchesSet(filters.size, r.size)) return false;
+                if (!matchesSet(filters.ah, String(r.ah))) return false;
+                if (!matchesSet(filters.rep, r.salesRep)) return false;
+                if (!matchesSet(filters.productCode, r.productCode)) return false;
+                if (!matchesSet(filters.customer, r.customer)) return false;
+                return true;
+            });
+        }
+
+        // =====================================================================
+        // 7. MASTER RENDER DISPATCHER
+        // =====================================================================
+        function renderActiveModule() {
+            renderCrossFilterBadges();
+            const kpiGrid = document.getElementById('kpiGrid');
+            kpiGrid.className = activeModule === 'INVENTORY'
+                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2.5'
+                : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5';
+
+            if (activeModule === 'PURCHASE') {
+                renderPurchaseModule();
+            } else if (activeModule === 'INVENTORY') {
+                renderInventoryModule();
+            } else {
+                renderSaleModule();
+            }
+            renderCompareSummaryPills();
+        }
+
+        function formatDeltaBadge(valA, valB, invertGood = false) {
+            if (!valB || valB === 0) return `<span class="text-[10px] text-slate-500">N/A</span>`;
+            const pct = ((valA - valB) / Math.abs(valB)) * 100;
+            const isPositive = pct >= 0;
+            const isGood = invertGood ? !isPositive : isPositive;
+            const colorClass = isGood
+                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                : 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+            const arrow = isPositive ? '▲' : '▼';
+            return `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums border ${colorClass}">${arrow} ${Math.abs(pct).toFixed(1)}%</span>`;
+        }
+
+        function renderCompareSummaryPills() {
+            const container = document.getElementById('compareSummaryPills');
+            if (!compareState.enabled || !container) {
+                if (container) container.innerHTML = '';
+                return;
+            }
+
+            const dim = compareState.dimension;
+            const aLabel = compareState.targetA;
+            const bLabel = compareState.targetB;
+
+            if (activeModule === 'PURCHASE') {
+                const rowsA = getFilteredPurchases(dim, aLabel);
+                const rowsB = getFilteredPurchases(dim, bLabel);
+                const costA = rowsA.reduce((s, r) => s + r.costTotal, 0);
+                const costB = rowsB.reduce((s, r) => s + r.costTotal, 0);
+                const qtyA = rowsA.reduce((s, r) => s + r.quantity, 0);
+                const qtyB = rowsB.reduce((s, r) => s + r.quantity, 0);
+
+                container.innerHTML = `
+                    <div class="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 px-2.5 py-1 rounded-md">
+                        <span class="text-slate-400">Purchase Cost:</span>
+                        <strong class="text-pbi-cyan tabular-nums">${formatCompactKs(costA)}</strong>
+                        <span class="text-slate-500">vs</span>
+                        <strong class="text-violet-300 tabular-nums">${formatCompactKs(costB)} Ks</strong>
+                        ${formatDeltaBadge(costA, costB)}
+                    </div>
+                    <div class="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 px-2.5 py-1 rounded-md">
+                        <span class="text-slate-400">Units:</span>
+                        <strong class="text-pbi-cyan tabular-nums">${qtyA}</strong>
+                        <span class="text-slate-500">vs</span>
+                        <strong class="text-violet-300 tabular-nums">${qtyB}</strong>
+                        ${formatDeltaBadge(qtyA, qtyB)}
+                    </div>
+                `;
+            } else if (activeModule === 'INVENTORY') {
+                const rowsA = getFilteredInventory(dim, aLabel);
+                const rowsB = getFilteredInventory(dim, bLabel);
+                const valA = rowsA.reduce((s, r) => s + r.valuation, 0);
+                const valB = rowsB.reduce((s, r) => s + r.valuation, 0);
+                const balA = rowsA.reduce((s, r) => s + r.balanceQty, 0);
+                const balB = rowsB.reduce((s, r) => s + r.balanceQty, 0);
+
+                container.innerHTML = `
+                    <div class="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 px-2.5 py-1 rounded-md">
+                        <span class="text-slate-400">Valuation:</span>
+                        <strong class="text-pbi-cyan tabular-nums">${formatCompactKs(valA)}</strong>
+                        <span class="text-slate-500">vs</span>
+                        <strong class="text-violet-300 tabular-nums">${formatCompactKs(valB)} Ks</strong>
+                        ${formatDeltaBadge(valA, valB)}
+                    </div>
+                    <div class="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 px-2.5 py-1 rounded-md">
+                        <span class="text-slate-400">Balance Units:</span>
+                        <strong class="text-pbi-cyan tabular-nums">${balA}</strong>
+                        <span class="text-slate-500">vs</span>
+                        <strong class="text-violet-300 tabular-nums">${balB}</strong>
+                        ${formatDeltaBadge(balA, balB)}
+                    </div>
+                `;
+            } else {
+                const rowsA = getFilteredSales(dim, aLabel);
+                const rowsB = getFilteredSales(dim, bLabel);
+                const netA = rowsA.reduce((s, r) => s + r.netSales, 0);
+                const netB = rowsB.reduce((s, r) => s + r.netSales, 0);
+                const gpA = rowsA.reduce((s, r) => s + r.grossProfit, 0);
+                const gpB = rowsB.reduce((s, r) => s + r.grossProfit, 0);
+                const qtyA = rowsA.reduce((s, r) => s + r.qtySold, 0);
+                const qtyB = rowsB.reduce((s, r) => s + r.qtySold, 0);
+
+                container.innerHTML = `
+                    <div class="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 px-2.5 py-1 rounded-md">
+                        <span class="text-slate-400">Net Sales:</span>
+                        <strong class="text-pbi-cyan tabular-nums">${formatCompactKs(netA)}</strong>
+                        <span class="text-slate-500">vs</span>
+                        <strong class="text-violet-300 tabular-nums">${formatCompactKs(netB)} Ks</strong>
+                        ${formatDeltaBadge(netA, netB)}
+                    </div>
+                    <div class="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 px-2.5 py-1 rounded-md">
+                        <span class="text-slate-400">Gross Profit:</span>
+                        <strong class="text-emerald-400 tabular-nums">${formatCompactKs(gpA)}</strong>
+                        <span class="text-slate-500">vs</span>
+                        <strong class="text-violet-300 tabular-nums">${formatCompactKs(gpB)} Ks</strong>
+                        ${formatDeltaBadge(gpA, gpB)}
+                    </div>
+                    <div class="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 px-2.5 py-1 rounded-md">
+                        <span class="text-slate-400">Units:</span>
+                        <strong class="text-pbi-cyan tabular-nums">${qtyA}</strong>
+                        <span class="text-slate-500">vs</span>
+                        <strong class="text-violet-300 tabular-nums">${qtyB}</strong>
+                        ${formatDeltaBadge(qtyA, qtyB)}
+                    </div>
+                `;
+            }
+        }
+
+        function buildKpiCardHtml({ borderClass, titleEn, titleMy, formulaTip = '', valueText, valueClass = 'text-white', badgeHtml = '', iconClass, iconBgClass, footerLeft, footerRight }) {
+            const infoIconHtml = formulaTip
+                ? `<span class="ml-1 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-800 text-slate-400 hover:text-pbi-cyan border border-slate-700 text-[9px] cursor-help" title="${formulaTip}">?</span>`
+                : '';
+            return `
+                <div class="kpi-box px-3 py-2.5 border-l-4 ${borderClass} flex flex-col justify-between">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate flex items-center">
+                                <span class="truncate">${titleEn} <span class="font-normal text-slate-500">(${titleMy})</span></span>
+                                ${infoIconHtml}
+                            </p>
+                            <div class="flex items-baseline gap-1.5 mt-0.5">
+                                <h2 class="text-base sm:text-lg font-bold ${valueClass} tabular-nums truncate">${valueText}</h2>
+                                ${badgeHtml}
+                            </div>
+                        </div>
+                        <div class="w-7 h-7 rounded-lg ${iconBgClass} flex items-center justify-center text-xs shrink-0">
+                            <i class="${iconClass}"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2 pt-1.5 border-t border-slate-800/90 flex items-center justify-between gap-1 text-[10px] text-slate-400">
+                        <span class="truncate">${footerLeft}</span>
+                        <span class="truncate shrink-0">${footerRight}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // =====================================================================
+        // 8. TAB 1: PURCHASE MODULE RENDERER
+        // =====================================================================
+        function renderPurchaseModule() {
+            const rows = getFilteredPurchases();
+
+            const totalCost = rows.reduce((s, r) => s + r.costTotal, 0);
+            const totalUnits = rows.reduce((s, r) => s + r.quantity, 0);
+            const totalSoldUnits = rows.reduce((s, r) => s + r.soldQty, 0);
+            const totalSaleVal = rows.reduce((s, r) => s + r.saleValue, 0);
+            const potentialProfit = totalSaleVal - totalCost;
+            const expectedMargin = totalSaleVal > 0 ? (potentialProfit / totalSaleVal) * 100 : 0;
+            const sellThroughPct = totalUnits > 0 ? (totalSoldUnits / totalUnits) * 100 : 0;
+            const avgUnitCost = totalUnits > 0 ? totalCost / totalUnits : 0;
+            const poCount = new Set(rows.map(r => r.poNo)).size;
+            const activeBatches = rows.filter(r => r.balanceQty > 0).length;
+            const closedBatches = rows.length - activeBatches;
+
+            document.getElementById('kpiGrid').innerHTML = [
+                buildKpiCardHtml({
+                    borderClass: 'border-l-pbi-violet',
+                    titleEn: 'Total Purchase Cost',
+                    titleMy: 'စုစုပေါင်း အဝယ်တန်ဖိုး',
+                    valueText: formatKs(totalCost),
+                    iconClass: 'fa-solid fa-file-invoice-dollar',
+                    iconBgClass: 'bg-pbi-violet/15 text-pbi-violet border border-pbi-violet/30',
+                    footerLeft: `PO Orders: <strong class="text-slate-200 tabular-nums">${poCount}</strong>`,
+                    footerRight: `Lots: <strong class="text-slate-200 tabular-nums">${rows.length}</strong>`
+                }),
+                buildKpiCardHtml({
+                    borderClass: 'border-l-pbi-cyan',
+                    titleEn: 'Purchased Units',
+                    titleMy: 'ဝယ်ယူပြီး အလုံးရေ',
+                    valueText: `${totalUnits.toLocaleString('en-US')} Units`,
+                    iconClass: 'fa-solid fa-boxes-stacked',
+                    iconBgClass: 'bg-pbi-cyan/15 text-pbi-cyan border border-pbi-cyan/30',
+                    footerLeft: `Avg Cost: <strong class="text-slate-200 tabular-nums">${formatCompactKs(avgUnitCost)} Ks</strong>`,
+                    footerRight: `<span class="text-pbi-cyan">Per Battery</span>`
+                }),
+                buildKpiCardHtml({
+                    borderClass: 'border-l-pbi-emerald',
+                    titleEn: 'Expected Retail Value',
+                    titleMy: 'မျှော်မှန်း ရောင်းရငွေ',
+                    formulaTip: 'Formula: Sum of [Sale Value] column (or Quantity × PRODUCT Unit Price)',
+                    valueText: formatKs(totalSaleVal),
+                    iconClass: 'fa-solid fa-sack-dollar',
+                    iconBgClass: 'bg-pbi-emerald/15 text-pbi-emerald border border-pbi-emerald/30',
+                    footerLeft: `Est. Profit: <strong class="text-emerald-400 tabular-nums">${formatCompactKs(potentialProfit)} Ks</strong>`,
+                    footerRight: `<span class="text-emerald-400">Retail - Cost</span>`
+                }),
+                buildKpiCardHtml({
+                    borderClass: 'border-l-pbi-amber',
+                    titleEn: 'Expected Margin %',
+                    titleMy: 'မျှော်မှန်း အမြတ်ရာခိုင်နှုန်း',
+                    formulaTip: 'Formula: ((Expected Retail Value - Total Purchase Cost) ÷ Expected Retail Value) × 100',
+                    valueText: `${expectedMargin.toFixed(1)}%`,
+                    valueClass: 'text-pbi-amber',
+                    iconClass: 'fa-solid fa-percent',
+                    iconBgClass: 'bg-pbi-amber/15 text-pbi-amber border border-pbi-amber/30',
+                    footerLeft: `Active Lots: <strong class="text-emerald-400 tabular-nums">${activeBatches}</strong>`,
+                    footerRight: `Closed: <strong class="text-slate-300 tabular-nums">${closedBatches}</strong>`
+                }),
+                buildKpiCardHtml({
+                    borderClass: 'border-l-sky-400',
+                    titleEn: 'Batch Sell-Through',
+                    titleMy: 'ရောင်းချပြီးစီးမှု',
+                    valueText: `${sellThroughPct.toFixed(1)}%`,
+                    valueClass: 'text-sky-400',
+                    iconClass: 'fa-solid fa-rotate',
+                    iconBgClass: 'bg-sky-500/15 text-sky-400 border border-sky-500/30',
+                    footerLeft: `Sold: <strong class="text-slate-200 tabular-nums">${totalSoldUnits.toLocaleString('en-US')}</strong>`,
+                    footerRight: `Bal: <strong class="text-amber-400 tabular-nums">${(totalUnits - totalSoldUnits).toLocaleString('en-US')}</strong>`
+                })
+            ].join('');
+
+            // Chart 1: Monthly Purchase Cost & Received Units (or Side-by-Side Comparison)
+            document.getElementById('chart1Accent').className = 'w-1.5 h-4 rounded-full bg-pbi-violet inline-block shrink-0';
+            document.getElementById('chart1Controls').innerHTML = '';
+
+            if (compareState.enabled) {
+                const dim = compareState.dimension;
+                const rowsA = getFilteredPurchases(dim, compareState.targetA);
+                const rowsB = getFilteredPurchases(dim, compareState.targetB);
+                const aggA = {}; const aggB = {};
+                FISCAL_MONTHS.forEach(m => { aggA[m] = 0; aggB[m] = 0; });
+                rowsA.forEach(r => { if (aggA[r.monthName] !== undefined) aggA[r.monthName] += r.costTotal; });
+                rowsB.forEach(r => { if (aggB[r.monthName] !== undefined) aggB[r.monthName] += r.costTotal; });
+
+                document.getElementById('chart1Title').textContent = `Purchase Comparison: ${compareState.targetA} vs ${compareState.targetB}`;
+                document.getElementById('chart1Subtitle').textContent = 'Side-by-Side Monthly Purchase Cost (Apr → Mar)';
+
+                renderComparisonGroupedChart({
+                    labels: FISCAL_MONTHS,
+                    labelA: `${compareState.targetA} Cost`,
+                    dataA: FISCAL_MONTHS.map(m => aggA[m]),
+                    labelB: `${compareState.targetB} Cost`,
+                    dataB: FISCAL_MONTHS.map(m => aggB[m]),
+                    onBarClick: m => toggleCrossFilter('month', m)
+                });
+            } else {
+                document.getElementById('chart1Title').textContent = 'Monthly Purchase Cost & Received Units';
+                document.getElementById('chart1Subtitle').textContent = 'Apr → Mar Fiscal Sequence (Click bar to filter Month)';
+
+                const monthAgg = {};
+                FISCAL_MONTHS.forEach(m => { monthAgg[m] = { cost: 0, units: 0 }; });
+                rows.forEach(r => {
+                    if (monthAgg[r.monthName]) {
+                        monthAgg[r.monthName].cost += r.costTotal;
+                        monthAgg[r.monthName].units += r.quantity;
+                    }
+                });
+
+                renderFiscalComboChart({
+                    labels: FISCAL_MONTHS,
+                    barLabel: 'Purchase Cost (MMK)',
+                    barData: FISCAL_MONTHS.map(m => monthAgg[m].cost),
+                    barDefaultColor: 'rgba(139, 92, 246, 0.85)',
+                    barActiveColor: '#06B6D4',
+                    lineLabel: 'Received Units',
+                    lineData: FISCAL_MONTHS.map(m => monthAgg[m].units),
+                    lineColor: '#F59E0B'
+                });
+            }
+
+            // Chart 2: Purchase Cost by Size or Ah
+            const c2Mode = chart2SubMode.PURCHASE;
+            document.getElementById('chart2Accent').className = 'w-1.5 h-4 rounded-full bg-pbi-cyan inline-block shrink-0';
+            document.getElementById('chart2Title').textContent = c2Mode === 'SIZE' ? 'Purchase Cost by Battery Size' : 'Purchase Cost by Ah Rating';
+            document.getElementById('chart2Subtitle').textContent = 'Click bar to cross-filter';
+            document.getElementById('chart2Controls').innerHTML = `
+                <button onclick="setChart2SubMode('PURCHASE', 'SIZE')" class="px-2 py-0.5 rounded font-semibold cursor-pointer ${c2Mode === 'SIZE' ? 'bg-pbi-cyan text-slate-950' : 'text-slate-400 hover:text-white'}">Size</button>
+                <button onclick="setChart2SubMode('PURCHASE', 'AH')" class="px-2 py-0.5 rounded font-semibold cursor-pointer ${c2Mode === 'AH' ? 'bg-pbi-cyan text-slate-950' : 'text-slate-400 hover:text-white'}">Ah</button>
+            `;
+
+            const c2Agg = {};
+            rows.forEach(r => {
+                const key = c2Mode === 'SIZE' ? r.size : String(r.ah);
+                if (!key || key === '0') return;
+                if (!c2Agg[key]) c2Agg[key] = { val: 0, units: 0 };
+                c2Agg[key].val += r.costTotal;
+                c2Agg[key].units += r.quantity;
+            });
+
+            const c2Keys = c2Mode === 'AH'
+                ? Object.keys(c2Agg).sort((a, b) => Number(a) - Number(b))
+                : Object.keys(c2Agg).sort((a, b) => c2Agg[b].val - c2Agg[a].val);
+
+            renderHorizontalBarChart({
+                rawKeys: c2Keys,
+                displayLabels: c2Keys.map(k => c2Mode === 'AH' ? `${k}Ah` : k),
+                values: c2Keys.map(k => c2Agg[k].val),
+                units: c2Keys.map(k => c2Agg[k].units),
+                activeSet: c2Mode === 'SIZE' ? filters.size : filters.ah,
+                defaultColor: 'rgba(6, 182, 212, 0.85)',
+                activeColor: '#8B5CF6',
+                metricLabel: 'Purchase Cost',
+                onSelect: key => toggleCrossFilter(c2Mode === 'SIZE' ? 'size' : 'ah', key)
+            });
+
+            // Chart 3: Brand or Category Purchase Share Donut
+            const c3Mode = chart3SubMode.PURCHASE;
+            document.getElementById('chart3Accent').className = 'w-1.5 h-4 rounded-full bg-pbi-emerald inline-block shrink-0';
+            document.getElementById('chart3Title').textContent = c3Mode === 'BRAND' ? 'Purchase by Brand' : 'Purchase by Category';
+            document.getElementById('chart3Controls').innerHTML = `
+                <button onclick="setChart3SubMode('PURCHASE', 'BRAND')" class="px-2 py-0.5 rounded font-semibold cursor-pointer ${c3Mode === 'BRAND' ? 'bg-pbi-emerald text-slate-950' : 'text-slate-400 hover:text-white'}">Brand</button>
+                <button onclick="setChart3SubMode('PURCHASE', 'CATEGORY')" class="px-2 py-0.5 rounded font-semibold cursor-pointer ${c3Mode === 'CATEGORY' ? 'bg-pbi-emerald text-slate-950' : 'text-slate-400 hover:text-white'}">Category</button>
+            `;
+
+            renderBrandCategoryDonut(rows, c3Mode, r => r.costTotal);
+
+            // Left Table: Purchase Batch Ledger
+            const query = document.getElementById('detailSearchInput').value.trim().toLowerCase();
+            const filteredRows = [...rows]
+                .filter(r => !query || `${r.poNo} ${r.productCode} ${r.productDesc} ${r.size} ${r.ah}ah ${r.brand}`.toLowerCase().includes(query))
+                .sort((a, b) => b.timestamp - a.timestamp);
+
+            document.getElementById('leftTableIcon').className = 'fa-solid fa-cart-flatbed text-pbi-violet text-xs';
+            document.getElementById('leftTableTitle').textContent = `Purchase Receiving Ledger (${filteredRows.length} Lots)`;
+            document.getElementById('leftTableSubtitle').textContent = 'Click row to filter by PO Number';
+
+            document.getElementById('leftTableHead').innerHTML = `
+                <tr>
+                    <th class="py-1.5 px-2">Recv Date</th>
+                    <th class="py-1.5 px-2">PO No.</th>
+                    <th class="py-1.5 px-2">Product</th>
+                    <th class="py-1.5 px-2">Size / Ah</th>
+                    <th class="py-1.5 px-2 text-right">Qty</th>
+                    <th class="py-1.5 px-2 text-right">Unit Cost</th>
+                    <th class="py-1.5 px-2 text-right">Total Cost</th>
+                    <th class="py-1.5 px-2 text-right">Sale Value</th>
+                </tr>
+            `;
+
+            document.getElementById('leftTableBody').innerHTML = filteredRows.length === 0
+                ? `<tr><td colspan="8" class="py-6 text-center text-slate-500">ရွေးချယ်ထားသော Filter အတွက် Purchase မှတ်တမ်း မရှိပါ။</td></tr>`
+                : filteredRows.map(r => {
+                    const selected = filters.poNo.has(r.poNo);
+                    return `
+                        <tr onclick="toggleCrossFilter('poNo', '${r.poNo.replace(/'/g, "\\'")}')" class="hover:bg-slate-800/60 transition cursor-pointer ${selected ? 'bg-pbi-violet/15' : ''}">
+                            <td class="py-1.5 px-2 text-slate-300 tabular-nums whitespace-nowrap">${r.dateStr}</td>
+                            <td class="py-1.5 px-2 font-semibold text-pbi-violet whitespace-nowrap">${r.poNo}</td>
+                            <td class="py-1.5 px-2 text-slate-200 max-w-[170px] truncate" title="${r.productDesc}">${r.productCode}</td>
+                            <td class="py-1.5 px-2 whitespace-nowrap">
+                                <span class="px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 text-[10px] font-semibold">${r.size}</span>
+                                <span class="px-1.5 py-0.5 rounded bg-slate-800 text-amber-300 text-[10px] font-semibold ml-0.5">${r.ah}Ah</span>
+                            </td>
+                            <td class="py-1.5 px-2 text-right text-slate-200 tabular-nums">${r.quantity}</td>
+                            <td class="py-1.5 px-2 text-right text-slate-400 tabular-nums">${r.costPrice.toLocaleString('en-US')}</td>
+                            <td class="py-1.5 px-2 text-right font-semibold text-white tabular-nums">${r.costTotal.toLocaleString('en-US')}</td>
+                            <td class="py-1.5 px-2 text-right text-emerald-400 tabular-nums">${r.saleValue.toLocaleString('en-US')}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+            // Right Table: PO Summary & Sell-Through
+            const poAgg = {};
+            rows.forEach(r => {
+                if (!poAgg[r.poNo]) {
+                    poAgg[r.poNo] = { poNo: r.poNo, dateStr: r.dateStr, fy: r.fiscalYear, qty: 0, sold: 0, bal: 0, cost: 0 };
+                }
+                poAgg[r.poNo].qty += r.quantity;
+                poAgg[r.poNo].sold += r.soldQty;
+                poAgg[r.poNo].bal += r.balanceQty;
+                poAgg[r.poNo].cost += r.costTotal;
+            });
+            const poList = Object.values(poAgg).sort((a, b) => b.cost - a.cost);
+
+            document.getElementById('rightTableIcon').className = 'fa-solid fa-file-signature text-pbi-cyan text-xs';
+            document.getElementById('rightTableTitle').textContent = 'PO Order Summary & Sell-Through';
+            document.getElementById('rightTableSubtitle').textContent = 'Click PO row to filter batches';
+            document.getElementById('rightTableBadge').textContent = `${poList.length} POs`;
+
+            document.getElementById('rightTableContainer').innerHTML = poList.length === 0
+                ? `<div class="py-8 text-center text-xs text-slate-500">PO ဒေတာ မရှိပါ</div>`
+                : `<div class="space-y-2 pr-1">
+                    ${poList.map(p => {
+                        const pct = p.qty > 0 ? Math.round((p.sold / p.qty) * 100) : 0;
+                        const selected = filters.poNo.has(p.poNo);
+                        const statusBadge = p.bal > 0
+                            ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px]">Active (${p.bal})</span>`
+                            : `<span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px]">Closed</span>`;
+                        return `
+                            <div onclick="toggleCrossFilter('poNo', '${p.poNo.replace(/'/g, "\\'")}')" class="p-2 rounded-lg border transition cursor-pointer ${selected ? 'bg-pbi-violet/15 border-pbi-violet/60' : 'bg-[#080D19]/80 border-slate-800/90 hover:border-slate-700'}">
+                                <div class="flex items-center justify-between text-xs">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-white">${p.poNo}</span>
+                                        <span class="text-[10px] text-slate-400">${p.dateStr} (${p.fy})</span>
+                                        ${statusBadge}
+                                    </div>
+                                    <span class="font-bold text-pbi-cyan tabular-nums">${formatCompactKs(p.cost)} Ks</span>
+                                </div>
+                                <div class="mt-1.5 flex items-center gap-2">
+                                    <div class="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                        <div class="h-full bg-gradient-to-r from-pbi-violet to-pbi-cyan rounded-full" style="width: ${pct}%"></div>
+                                    </div>
+                                    <span class="text-[10px] font-semibold text-slate-300 tabular-nums w-24 text-right">${p.sold}/${p.qty} (${pct}%)</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>`;
+        }
+
+        // =====================================================================
+        // 9. TAB 2: INVENTORY MODULE RENDERER (WITH SIZE & AH MATRIX + TURNOVER)
+        // =====================================================================
+        function renderInventoryModule() {
+            const rows = getFilteredInventory();
+
+            const totalValuation = rows.reduce((s, r) => s + r.valuation, 0);
+            const totalBalUnits = rows.reduce((s, r) => s + r.balanceQty, 0);
+            const totalBalRetail = rows.reduce((s, r) => s + r.balRetailValue, 0);
+            const unrealizedProfit = totalBalRetail - totalValuation;
+            const avgUnitVal = totalBalUnits > 0 ? totalValuation / totalBalUnits : 0;
+
+            const activeSkus = new Set(rows.filter(r => r.balanceQty > 0).map(r => r.productCode)).size;
+
+            const over12Rows = rows.filter(r => r.agingMonth > 12 && r.balanceQty > 0);
+            const over12Units = over12Rows.reduce((s, r) => s + r.balanceQty, 0);
+            const over12Val = over12Rows.reduce((s, r) => s + r.valuation, 0);
+            const over12Pct = totalValuation > 0 ? (over12Val / totalValuation) * 100 : 0;
+
+            const weightedAgeSum = rows.reduce((s, r) => s + (r.agingMonth * r.balanceQty), 0);
+            const weightedAvgAge = totalBalUnits > 0 ? weightedAgeSum / totalBalUnits : 0;
+            const totalInitQty = rows.reduce((s, r) => s + r.quantity, 0);
+            const totalSoldQty = rows.reduce((s, r) => s + r.soldQty, 0);
+            const stockSellThrough = totalInitQty > 0 ? (totalSoldQty / totalInitQty) * 100 : 0;
+
+            // Inventory Turnover Rate = Period COGS (from SALE matching product filters) / Current FIFO Valuation
+            const matchingSalesForTurnover = joinedSales.filter(s => {
+                if (!matchesSet(filters.fy, s.fiscalYear)) return false;
+                if (!matchesSet(filters.quarter, s.quarter)) return false;
+                if (!matchesSet(filters.month, s.monthName)) return false;
+                if (!matchesSet(filters.brand, s.brand)) return false;
+                if (!matchesSet(filters.category, s.category)) return false;
+                if (!matchesSet(filters.size, s.size)) return false;
+                if (!matchesSet(filters.ah, String(s.ah))) return false;
+                if (!matchesSet(filters.productCode, s.productCode)) return false;
+                return true;
+            });
+            const periodCogs = matchingSalesForTurnover.reduce((sum, s) => sum + s.totalCogs, 0);
+            const turnoverRate = totalValuation > 0 ? (periodCogs / totalValuation) : 0;
+            const daysOnHand = turnoverRate > 0 ? Math.round(365 / turnoverRate) : 0;
+
+            document.getElementById('kpiGrid').innerHTML = [
+                buildKpiCardHtml({
+                    borderClass: 'border-l-pbi-amber',
+                    titleEn: 'FIFO Stock Valuation',
+                    titleMy: 'လက်ကျန်တန်ဖိုး',
+                    valueText: formatKs(totalValuation),
+                    iconClass: 'fa-solid fa-warehouse',
+                    iconBgClass: 'bg-pbi-amber/15 text-pbi-amber border border-pbi-amber/30',
+                    footerLeft: `Active SKUs: <strong class="text-slate-200 tabular-nums">${activeSkus}</strong>`,
+                    footerRight: `Lots: <strong class="text-slate-200 tabular-nums">${rows.length}</strong>`
+                }),
+                buildKpiCardHtml({
+                    borderClass: 'border-l-pbi-cyan',
+                    titleEn: 'Balance Units',
+                    titleMy: 'လက်ကျန်အလုံးရေ',
+                    valueText: `${totalBalUnits.toLocaleString('en-US')} Units`,
+                    iconClass: 'fa-solid fa-battery-three-quarters',
+                    iconBgClass: 'bg-pbi-cyan/15 text-pbi-cyan border border-pbi-cyan/30',
+                    footerLeft: `Avg Val: <strong class="text-slate-200 tabular-nums">${formatCompactKs(avgUnitVal)} Ks</strong>`,
+                    footerRight: `<span class="text-pbi-cyan">FIFO Cost</span>`
+                }),
+                buildKpiCardHtml({
+                    borderClass: 'border-l-pbi-emerald',
+                    titleEn: 'Potential Retail',
+                    titleMy: 'မျှော်မှန်းရောင်းရငွေ',
+                    formulaTip: 'Formula: Balance Qty × PRODUCT Unit Price; Unrealized GP = Potential Retail - FIFO Valuation',
+                    valueText: formatKs(totalBalRetail),
+                    iconClass: 'fa-solid fa-hand-holding-dollar',
+                    iconBgClass: 'bg-pbi-emerald/15 text-pbi-emerald border border-pbi-emerald/30',
+                    footerLeft: `Est. GP: <strong class="text-emerald-400 tabular-nums">${formatCompactKs(unrealizedProfit)} Ks</strong>`,
+                    footerRight: `<span class="text-emerald-400">Margin</span>`
+                }),
+                buildKpiCardHtml({
+                    borderClass: 'border-l-sky-400',
+                    titleEn: 'Inventory Turnover',
+                    titleMy: 'ကုန်ပစ္စည်း လည်ပတ်နှုန်း',
+                    formulaTip: 'Formula: Total Sales COGS ÷ Current FIFO Stock Valuation; Days on Hand (DOH) = 365 ÷ Turnover Rate',
+                    valueText: `${turnoverRate.toFixed(2)}x`,
+                    valueClass: 'text-sky-400',
+                    iconClass: 'fa-solid fa-arrows-spin',
+                    iconBgClass: 'bg-sky-500/15 text-sky-400 border border-sky-500/30',
+                    footerLeft: `COGS: <strong class="text-slate-200 tabular-nums">${formatCompactKs(periodCogs)}</strong>`,
+                    footerRight: `DOH: <strong class="text-sky-300 tabular-nums">${daysOnHand > 0 ? daysOnHand + 'd' : '-'}</strong>`
+                }),
+                buildKpiCardHtml({
+                    borderClass: 'border-l-pbi-rose',
+                    titleEn: 'Aging Risk (>12M)',
+                    titleMy: '၁၂ လအထက် Stock',
+                    valueText: formatKs(over12Val),
+                    valueClass: over12Units > 0 ? 'text-rose-400' : 'text-emerald-400',
+                    iconClass: 'fa-solid fa-triangle-exclamation',
+                    iconBgClass: 'bg-pbi-rose/15 text-pbi-rose border border-pbi-rose/30',
+                    footerLeft: `Units: <strong class="text-rose-400 tabular-nums">${over12Units}</strong>`,
+                    footerRight: `Share: <strong class="text-rose-400 tabular-nums">${over12Pct.toFixed(1)}%</strong>`
+                }),
+                buildKpiCardHtml({
+                    borderClass: 'border-l-pbi-violet',
+                    titleEn: 'Weighted Avg Age',
+                    titleMy: 'ပျမ်းမျှ သက်တမ်း',
+                    valueText: `${weightedAvgAge.toFixed(1)} Mos`,
+                    valueClass: 'text-pbi-violet',
+                    iconClass: 'fa-solid fa-hourglass-half',
+                    iconBgClass: 'bg-pbi-violet/15 text-pbi-violet border border-pbi-violet/30',
+                    footerLeft: `Sell-Thru: <strong class="text-slate-200 tabular-nums">${stockSellThrough.toFixed(1)}%</strong>`,
+                    footerRight: `<span class="text-slate-400">FIFO</span>`
+                })
+            ].join('');
+
+            // Chart 1: FIFO Stock Aging Distribution (or Side-by-Side Comparison)
+            document.getElementById('chart1Accent').className = 'w-1.5 h-4 rounded-full bg-pbi-rose inline-block shrink-0';
+            document.getElementById('chart1Controls').innerHTML = '';
+            const buckets = ['0-3M', '4-6M', '7-12M', '>12M'];
+
+            if (compareState.enabled) {
+                const dim = compareState.dimension;
+                const rowsA = getFilteredInventory(dim, compareState.targetA);
+                const rowsB = getFilteredInventory(dim, compareState.targetB);
+                const aggA = { '0-3M': 0, '4-6M': 0, '7-12M': 0, '>12M': 0 };
+                const aggB = { '0-3M': 0, '4-6M': 0, '7-12M': 0, '>12M': 0 };
+                rowsA.forEach(r => { if (aggA[r.agingBucket] !== undefined) aggA[r.agingBucket] += r.valuation; });
+                rowsB.forEach(r => { if (aggB[r.agingBucket] !== undefined) aggB[r.agingBucket] += r.valuation; });
+
+                document.getElementById('chart1Title').textContent = `Aging Comparison: ${compareState.targetA} vs ${compareState.targetB}`;
+                document.getElementById('chart1Subtitle').textContent = 'Side-by-Side FIFO Valuation by Age Bucket';
+
+                renderComparisonGroupedChart({
+                    labels: buckets,
+                    labelA: `${compareState.targetA} Valuation`,
+                    dataA: buckets.map(b => aggA[b]),
+                    labelB: `${compareState.targetB} Valuation`,
+                    dataB: buckets.map(b => aggB[b]),
+                    onBarClick: b => toggleCrossFilter('agingBucket', b)
+                });
+            } else {
+                document.getElementById('chart1Title').textContent = 'FIFO Stock Aging Distribution';
+                document.getElementById('chart1Subtitle').textContent = 'Valuation & Balance Units by Age Bucket (Click bar to filter)';
+
+                const bucketAgg = {
+                    '0-3M': { val: 0, units: 0 },
+                    '4-6M': { val: 0, units: 0 },
+                    '7-12M': { val: 0, units: 0 },
+                    '>12M': { val: 0, units: 0 }
+                };
+                rows.forEach(r => {
+                    if (bucketAgg[r.agingBucket]) {
+                        bucketAgg[r.agingBucket].val += r.valuation;
+                        bucketAgg[r.agingBucket].units += r.balanceQty;
+                    }
+                });
+
+                const bucketColors = buckets.map(b => {
+                    if (filters.agingBucket.has(b)) return '#06B6D4';
+                    if (b === '0-3M') return 'rgba(16, 185, 129, 0.85)';
+                    if (b === '4-6M') return 'rgba(56, 189, 248, 0.85)';
+                    if (b === '7-12M') return 'rgba(245, 158, 11, 0.85)';
+                    return 'rgba(244, 63, 94, 0.88)';
+                });
+
+                renderAgingBucketChart({
+                    buckets,
+                    valuations: buckets.map(b => bucketAgg[b].val),
+                    units: buckets.map(b => bucketAgg[b].units),
+                    colors: bucketColors
+                });
+            }
+
+            // Chart 2: Stock Valuation by Size or Ah
+            const c2Mode = chart2SubMode.INVENTORY;
+            document.getElementById('chart2Accent').className = 'w-1.5 h-4 rounded-full bg-pbi-amber inline-block shrink-0';
+            document.getElementById('chart2Title').textContent = c2Mode === 'SIZE' ? 'Stock Valuation by Size' : 'Stock Valuation by Ah Rating';
+            document.getElementById('chart2Subtitle').textContent = 'Click bar to cross-filter';
+            document.getElementById('chart2Controls').innerHTML = `
+                <button onclick="setChart2SubMode('INVENTORY', 'SIZE')" class="px-2 py-0.5 rounded font-semibold cursor-pointer ${c2Mode === 'SIZE' ? 'bg-pbi-amber text-slate-950' : 'text-slate-400 hover:text-white'}">Size</button>
+                <button onclick="setChart2SubMode('INVENTORY', 'AH')" class="px-2 py-0.5 rounded font-semibold cursor-pointer ${c2Mode === 'AH' ? 'bg-pbi-amber text-slate-950' : 'text-slate-400 hover:text-white'}">Ah</button>
+            `;
+
+            const c2Agg = {};
+            rows.forEach(r => {
+                const key = c2Mode === 'SIZE' ? r.size : String(r.ah);
+                if (!key || key === '0') return;
+                if (!c2Agg[key]) c2Agg[key] = { val: 0, units: 0 };
+                c2Agg[key].val += r.valuation;
+                c2Agg[key].units += r.balanceQty;
+            });
+
+            const c2Keys = c2Mode === 'AH'
+                ? Object.keys(c2Agg).sort((a, b) => Number(a) - Number(b))
+                : Object.keys(c2Agg).sort((a, b) => c2Agg[b].val - c2Agg[a].val);
+
+            renderHorizontalBarChart({
+                rawKeys: c2Keys,
+                displayLabels: c2Keys.map(k => c2Mode === 'AH' ? `${k}Ah` : k),
+                values: c2Keys.map(k => c2Agg[k].val),
+                units: c2Keys.map(k => c2Agg[k].units),
+                activeSet: c2Mode === 'SIZE' ? filters.size : filters.ah,
+                defaultColor: 'rgba(245, 158, 11, 0.85)',
+                activeColor: '#06B6D4',
+                metricLabel: 'Stock Valuation',
+                onSelect: key => toggleCrossFilter(c2Mode === 'SIZE' ? 'size' : 'ah', key)
+            });
+
+            // Chart 3: Brand or Category Stock Share Donut
+            const c3Mode = chart3SubMode.INVENTORY;
+            document.getElementById('chart3Accent').className = 'w-1.5 h-4 rounded-full bg-pbi-emerald inline-block shrink-0';
+            document.getElementById('chart3Title').textContent = c3Mode === 'BRAND' ? 'Stock by Brand' : 'Stock by Category';
+            document.getElementById('chart3Controls').innerHTML = `
+                <button onclick="setChart3SubMode('INVENTORY', 'BRAND')" class="px-2 py-0.5 rounded font-semibold cursor-pointer ${c3Mode === 'BRAND' ? 'bg-pbi-emerald text-slate-950' : 'text-slate-400 hover:text-white'}">Brand</button>
+                <button onclick="setChart3SubMode('INVENTORY', 'CATEGORY')" class="px-2 py-0.5 rounded font-semibold cursor-pointer ${c3Mode === 'CATEGORY' ? 'bg-pbi-emerald text-slate-950' : 'text-slate-400 hover:text-white'}">Category</button>
+            `;
+
+            renderBrandCategoryDonut(rows, c3Mode, r => r.valuation);
+
+            // Left Table: Size & Ah Stock Matrix
+            const query = document.getElementById('detailSearchInput').value.trim().toLowerCase();
+            const matrixMap = {};
+            rows.forEach(r => {
+                const key = `${r.size}__${r.ah}`;
+                if (!matrixMap[key]) {
+                    matrixMap[key] = {
+                        size: r.size,
+                        ah: r.ah,
+                        brands: new Set(),
+                        categories: new Set(),
+                        lots: 0,
+                        balQty: 0,
+                        valuation: 0,
+                        retailVal: 0,
+                        ageWeighted: 0
+                    };
+                }
+                const m = matrixMap[key];
+                m.brands.add(r.brand);
+                m.categories.add(r.category);
+                m.lots += 1;
+                m.balQty += r.balanceQty;
+                m.valuation += r.valuation;
+                m.retailVal += r.balRetailValue;
+                m.ageWeighted += (r.agingMonth * r.balanceQty);
+            });
+
+            const matrixList = Object.values(matrixMap)
+                .filter(m => !query || `${m.size} ${m.ah}ah ${[...m.brands].join(' ')} ${[...m.categories].join(' ')}`.toLowerCase().includes(query))
+                .sort((a, b) => b.valuation - a.valuation);
+
+            document.getElementById('leftTableIcon').className = 'fa-solid fa-table-cells text-pbi-amber text-xs';
+            document.getElementById('leftTableTitle').textContent = `Size & Ah Stock Matrix (${matrixList.length} Groups)`;
+            document.getElementById('leftTableSubtitle').textContent = 'Click row to filter by Size & Ah combination';
+
+            document.getElementById('leftTableHead').innerHTML = `
+                <tr>
+                    <th class="py-1.5 px-2">Size</th>
+                    <th class="py-1.5 px-2">Ah</th>
+                    <th class="py-1.5 px-2">Brand / Cat</th>
+                    <th class="py-1.5 px-2 text-right">Lots</th>
+                    <th class="py-1.5 px-2 text-right">Bal Qty</th>
+                    <th class="py-1.5 px-2 text-right">FIFO Valuation</th>
+                    <th class="py-1.5 px-2 text-right">Retail Value</th>
+                    <th class="py-1.5 px-2 text-right">Avg Age</th>
+                </tr>
+            `;
+
+            document.getElementById('leftTableBody').innerHTML = matrixList.length === 0
+                ? `<tr><td colspan="8" class="py-6 text-center text-slate-500">ရွေးချယ်ထားသော Filter အတွက် Stock စာရင်း မရှိပါ။</td></tr>`
+                : matrixList.map(m => {
+                    const avgAge = m.balQty > 0 ? (m.ageWeighted / m.balQty) : 0;
+                    const isSelected = filters.size.has(m.size) && filters.ah.has(String(m.ah));
+                    const ageClass = avgAge > 12 ? 'text-rose-400 font-bold' : avgAge >= 7 ? 'text-amber-400' : 'text-emerald-400';
+                    return `
+                        <tr onclick="toggleSizeAhMatrix('${m.size.replace(/'/g, "\\'")}', ${m.ah})" class="hover:bg-slate-800/60 transition cursor-pointer ${isSelected ? 'bg-pbi-amber/15' : ''}">
+                            <td class="py-1.5 px-2 font-bold text-cyan-300">${m.size}</td>
+                            <td class="py-1.5 px-2 font-bold text-amber-300 tabular-nums">${m.ah}Ah</td>
+                            <td class="py-1.5 px-2 text-slate-300 text-[11px]">${[...m.brands].join(', ')} • ${[...m.categories].join(', ')}</td>
+                            <td class="py-1.5 px-2 text-right text-slate-400 tabular-nums">${m.lots}</td>
+                            <td class="py-1.5 px-2 text-right font-semibold text-white tabular-nums">${m.balQty.toLocaleString('en-US')}</td>
+                            <td class="py-1.5 px-2 text-right font-semibold text-pbi-amber tabular-nums">${m.valuation.toLocaleString('en-US')}</td>
+                            <td class="py-1.5 px-2 text-right text-emerald-400 tabular-nums">${m.retailVal.toLocaleString('en-US')}</td>
+                            <td class="py-1.5 px-2 text-right tabular-nums ${ageClass}">${avgAge.toFixed(1)}m</td>
+                        </tr>
+                    `;
+                }).join('');
+
+            // Right Table: Oldest FIFO Lots (Aging Ledger)
+            const agingLots = [...rows]
+                .filter(r => r.balanceQty > 0)
+                .sort((a, b) => b.agingMonth - a.agingMonth);
+
+            document.getElementById('rightTableIcon').className = 'fa-solid fa-clock-rotate-left text-pbi-rose text-xs';
+            document.getElementById('rightTableTitle').textContent = 'FIFO Lot Aging Priority (Oldest First)';
+            document.getElementById('rightTableSubtitle').textContent = 'Monitor >12M slow-moving batches';
+            document.getElementById('rightTableBadge').textContent = `${agingLots.length} Active Lots`;
+
+            document.getElementById('rightTableContainer').innerHTML = agingLots.length === 0
+                ? `<div class="py-8 text-center text-xs text-slate-500">လက်ကျန် Batch မရှိပါ</div>`
+                : `<table class="w-full text-left border-collapse">
+                    <thead class="sticky top-0 bg-[#0F172A] z-10 text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                        <tr>
+                            <th class="py-1.5 px-2">Model (Size/Ah)</th>
+                            <th class="py-1.5 px-2">PO</th>
+                            <th class="py-1.5 px-2 text-right">Bal</th>
+                            <th class="py-1.5 px-2 text-right">Valuation</th>
+                            <th class="py-1.5 px-2 text-center">Age</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60 text-xs">
+                        ${agingLots.map(r => {
+                            const ageBadge = r.agingMonth > 12
+                                ? 'bg-rose-500/20 text-rose-400 border-rose-500/40 font-bold'
+                                : r.agingMonth >= 7
+                                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 font-semibold'
+                                    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+                            return `
+                                <tr onclick="toggleCrossFilter('productCode', '${r.productCode.replace(/'/g, "\\'")}')" class="hover:bg-slate-800/60 transition cursor-pointer">
+                                    <td class="py-1.5 px-2">
+                                        <div class="font-semibold text-slate-200">${r.productCode}</div>
+                                        <div class="text-[10px] text-slate-400">${r.size} • ${r.ah}Ah • ${r.brand}</div>
+                                    </td>
+                                    <td class="py-1.5 px-2 text-slate-400 text-[11px]">${r.poNo}</td>
+                                    <td class="py-1.5 px-2 text-right font-semibold text-white tabular-nums">${r.balanceQty}</td>
+                                    <td class="py-1.5 px-2 text-right text-pbi-amber tabular-nums">${formatCompactKs(r.valuation)}</td>
+                                    <td class="py-1.5 px-2 text-center">
+                                        <span class="px-1.5 py-0.5 rounded border text-[10px] tabular-nums ${ageBadge}">${r.agingMonth}m</span>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>`;
+        }
+
+        function toggleSizeAhMatrix(size, ah) {
+            const ahStr = String(ah);
+            if (filters.size.has(size) && filters.ah.has(ahStr)) {
+                filters.size.delete(size);
+                filters.ah.delete(ahStr);
+            } else {
+                filters.size.add(size);
+                filters.ah.add(ahStr);
+            }
+            renderMultiSelectBar();
+            renderActiveModule();
+        }
+
+        // =====================================================================
+        // 10. TAB 3: SALE MODULE RENDERER
+        // =====================================================================
+        function renderSaleModule() {
+            const rows = getFilteredSales();
+
+            const netSales = rows.reduce((s, r) => s + r.netSales, 0);
+            const grossSales = rows.reduce((s, r) => s + r.saleAmount, 0);
+            const discountAmt = rows.reduce((s, r) => s + r.discountAmt, 0);
+            const totalCogs = rows.reduce((s, r) => s + r.totalCogs, 0);
+            const grossProfit = netSales - totalCogs;
+            const gmPct = netSales > 0 ? (grossProfit / netSales) * 100 : 0;
+            const unitsSold = rows.reduce((s, r) => s + r.qtySold, 0);
+            const invCount = new Set(rows.map(r => r.invoiceNo)).size;
+            const custCount = new Set(rows.map(r => r.customer)).size;
+            const avgOrderVal = invCount > 0 ? netSales / invCount : 0;
+            const avgSellPrice = unitsSold > 0 ? netSales / unitsSold : 0;
+
+            document.getElementById('kpiGrid').innerHTML = [
+                buildKpiCardHtml({
+                    borderClass: 'border-l-pbi-cyan',
+                    titleEn: 'Net Sales',
+                    titleMy: 'အသားတင် ရောင်းရငွေ',
+                    valueText: formatKs(netSales),
+                    iconClass: 'fa-solid fa-sack-dollar',
+                    iconBgClass: 'bg-pbi-cyan/15 text-pbi-cyan border border-pbi-cyan/30',
+                    footerLeft: `Gross: <strong class="text-slate-200 tabular-nums">${formatCompactKs(grossSales)}</strong>`,
+                    footerRight: `Disc: <strong class="text-rose-400 tabular-nums">-${formatCompactKs(discountAmt)}</strong>`
+                }),
+                buildKpiCardHtml({
+                    borderClass: 'border-l-pbi-emerald',
+                    titleEn: 'Gross Profit',
+                    titleMy: 'အသားတင် အမြတ်ငွေ',
+                    valueText: formatKs(grossProfit),
+                    valueClass: grossProfit >= 0 ? 'text-emerald-400' : 'text-rose-400',
+                    badgeHtml: `<span class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold tabular-nums">GM ${gmPct.toFixed(1)}%</span>`,
+                    iconClass: 'fa-solid fa-chart-line',
+                    iconBgClass: 'bg-pbi-emerald/15 text-pbi-emerald border border-pbi-emerald/30',
+                    footerLeft: `Avg/Unit: <strong class="text-slate-200 tabular-nums">${formatCompactKs(avgSellPrice)} Ks</strong>`,
+                    footerRight: `<span class="text-emerald-400">Net - COGS</span>`
+                }),
+                buildKpiCardHtml({
+                    borderClass: 'border-l-pbi-amber',
+                    titleEn: 'Total Units Sold',
+                    titleMy: 'ရောင်းချပြီး အလုံးရေ',
+                    valueText: `${unitsSold.toLocaleString('en-US')} Units`,
+                    iconClass: 'fa-solid fa-battery-full',
+                    iconBgClass: 'bg-pbi-amber/15 text-pbi-amber border border-pbi-amber/30',
+                    footerLeft: `Invoices: <strong class="text-slate-200 tabular-nums">${invCount}</strong>`,
+                    footerRight: `Customers: <strong class="text-slate-200 tabular-nums">${custCount}</strong>`
+                }),
+                buildKpiCardHtml({
+                    borderClass: 'border-l-pbi-violet',
+                    titleEn: 'Total COGS (MYOB)',
+                    titleMy: 'ကုန်ကျစရိတ် စုစုပေါင်း',
+                    valueText: formatKs(totalCogs),
+                    iconClass: 'fa-solid fa-receipt',
+                    iconBgClass: 'bg-pbi-violet/15 text-pbi-violet border border-pbi-violet/30',
+                    footerLeft: `Cost Ratio: <strong class="text-slate-200 tabular-nums">${netSales > 0 ? ((totalCogs / netSales) * 100).toFixed(1) : 0}%</strong>`,
+                    footerRight: `<span class="text-pbi-violet">FIFO COGS</span>`
+                }),
+                buildKpiCardHtml({
+                    borderClass: 'border-l-sky-400',
+                    titleEn: 'Avg Order Value',
+                    titleMy: 'ဘောင်ချာပျမ်းမျှတန်ဖိုး',
+                    valueText: formatKs(avgOrderVal),
+                    valueClass: 'text-sky-400',
+                    iconClass: 'fa-solid fa-file-invoice',
+                    iconBgClass: 'bg-sky-500/15 text-sky-400 border border-sky-500/30',
+                    footerLeft: `Units/Inv: <strong class="text-slate-200 tabular-nums">${invCount > 0 ? (unitsSold / invCount).toFixed(1) : 0}</strong>`,
+                    footerRight: `Lines: <strong class="text-slate-200 tabular-nums">${rows.length}</strong>`
+                })
+            ].join('');
+
+            // Chart 1: Monthly Net Sales & Gross Profit (or Side-by-Side Comparison)
+            document.getElementById('chart1Accent').className = 'w-1.5 h-4 rounded-full bg-pbi-cyan inline-block shrink-0';
+            document.getElementById('chart1Controls').innerHTML = '';
+
+            if (compareState.enabled) {
+                const dim = compareState.dimension;
+                const rowsA = getFilteredSales(dim, compareState.targetA);
+                const rowsB = getFilteredSales(dim, compareState.targetB);
+                const aggA = {}; const aggB = {};
+                FISCAL_MONTHS.forEach(m => { aggA[m] = 0; aggB[m] = 0; });
+                rowsA.forEach(r => { if (aggA[r.monthName] !== undefined) aggA[r.monthName] += r.netSales; });
+                rowsB.forEach(r => { if (aggB[r.monthName] !== undefined) aggB[r.monthName] += r.netSales; });
+
+                document.getElementById('chart1Title').textContent = `Net Sales Comparison: ${compareState.targetA} vs ${compareState.targetB}`;
+                document.getElementById('chart1Subtitle').textContent = 'Side-by-Side Monthly Net Sales (Apr → Mar)';
+
+                renderComparisonGroupedChart({
+                    labels: FISCAL_MONTHS,
+                    labelA: `${compareState.targetA} Net Sales`,
+                    dataA: FISCAL_MONTHS.map(m => aggA[m]),
+                    labelB: `${compareState.targetB} Net Sales`,
+                    dataB: FISCAL_MONTHS.map(m => aggB[m]),
+                    onBarClick: m => toggleCrossFilter('month', m)
+                });
+            } else {
+                document.getElementById('chart1Title').textContent = 'Monthly Net Sales & Gross Profit';
+                document.getElementById('chart1Subtitle').textContent = 'Apr → Mar Fiscal Sequence (Click bar to filter Month)';
+
+                const monthAgg = {};
+                FISCAL_MONTHS.forEach(m => { monthAgg[m] = { net: 0, profit: 0 }; });
+                rows.forEach(r => {
+                    if (monthAgg[r.monthName]) {
+                        monthAgg[r.monthName].net += r.netSales;
+                        monthAgg[r.monthName].profit += r.grossProfit;
+                    }
+                });
+
+                renderFiscalComboChart({
+                    labels: FISCAL_MONTHS,
+                    barLabel: 'Net Sales (MMK)',
+                    barData: FISCAL_MONTHS.map(m => monthAgg[m].net),
+                    barDefaultColor: 'rgba(6, 182, 212, 0.85)',
+                    barActiveColor: '#F59E0B',
+                    lineLabel: 'Gross Profit (MMK)',
+                    lineData: FISCAL_MONTHS.map(m => monthAgg[m].profit),
+                    lineColor: '#10B981'
+                });
+            }
+
+            // Chart 2: Net Sales by Size / Ah / Model
+            const c2Mode = chart2SubMode.SALE;
+            document.getElementById('chart2Accent').className = 'w-1.5 h-4 rounded-full bg-pbi-amber inline-block shrink-0';
+            document.getElementById('chart2Title').textContent =
+                c2Mode === 'SIZE' ? 'Net Sales by Battery Size' :
+                c2Mode === 'AH' ? 'Net Sales by Ah Rating' : 'Top Selling Battery Models';
+            document.getElementById('chart2Subtitle').textContent = 'Click bar to cross-filter';
+            document.getElementById('chart2Controls').innerHTML = `
+                <button onclick="setChart2SubMode('SALE', 'SIZE')" class="px-2 py-0.5 rounded font-semibold cursor-pointer ${c2Mode === 'SIZE' ? 'bg-pbi-amber text-slate-950' : 'text-slate-400 hover:text-white'}">Size</button>
+                <button onclick="setChart2SubMode('SALE', 'AH')" class="px-2 py-0.5 rounded font-semibold cursor-pointer ${c2Mode === 'AH' ? 'bg-pbi-amber text-slate-950' : 'text-slate-400 hover:text-white'}">Ah</button>
+                <button onclick="setChart2SubMode('SALE', 'MODEL')" class="px-2 py-0.5 rounded font-semibold cursor-pointer ${c2Mode === 'MODEL' ? 'bg-pbi-amber text-slate-950' : 'text-slate-400 hover:text-white'}">Model</button>
+            `;
+
+            const c2Agg = {};
+            rows.forEach(r => {
+                const key = c2Mode === 'SIZE' ? r.size : (c2Mode === 'AH' ? String(r.ah) : r.productCode);
+                if (!key || key === '0') return;
+                if (!c2Agg[key]) c2Agg[key] = { val: 0, units: 0 };
+                c2Agg[key].val += r.netSales;
+                c2Agg[key].units += r.qtySold;
+            });
+
+            const c2Keys = c2Mode === 'AH'
+                ? Object.keys(c2Agg).sort((a, b) => Number(a) - Number(b))
+                : Object.keys(c2Agg).sort((a, b) => c2Agg[b].val - c2Agg[a].val).slice(0, 8);
+
+            const activeC2Set = c2Mode === 'SIZE' ? filters.size : (c2Mode === 'AH' ? filters.ah : filters.productCode);
+
+            renderHorizontalBarChart({
+                rawKeys: c2Keys,
+                displayLabels: c2Keys.map(k => c2Mode === 'AH' ? `${k}Ah` : k),
+                values: c2Keys.map(k => c2Agg[k].val),
+                units: c2Keys.map(k => c2Agg[k].units),
+                activeSet: activeC2Set,
+                defaultColor: 'rgba(245, 158, 11, 0.85)',
+                activeColor: '#06B6D4',
+                metricLabel: 'Net Sales',
+                onSelect: key => {
+                    const fKey = c2Mode === 'SIZE' ? 'size' : (c2Mode === 'AH' ? 'ah' : 'productCode');
+                    toggleCrossFilter(fKey, key);
+                }
+            });
+
+            // Chart 3: Brand or Category Sales Share Donut
+            const c3Mode = chart3SubMode.SALE;
+            document.getElementById('chart3Accent').className = 'w-1.5 h-4 rounded-full bg-pbi-emerald inline-block shrink-0';
+            document.getElementById('chart3Title').textContent = c3Mode === 'BRAND' ? 'Sales by Brand' : 'Sales by Category';
+            document.getElementById('chart3Controls').innerHTML = `
+                <button onclick="setChart3SubMode('SALE', 'BRAND')" class="px-2 py-0.5 rounded font-semibold cursor-pointer ${c3Mode === 'BRAND' ? 'bg-pbi-emerald text-slate-950' : 'text-slate-400 hover:text-white'}">Brand</button>
+                <button onclick="setChart3SubMode('SALE', 'CATEGORY')" class="px-2 py-0.5 rounded font-semibold cursor-pointer ${c3Mode === 'CATEGORY' ? 'bg-pbi-emerald text-slate-950' : 'text-slate-400 hover:text-white'}">Category</button>
+            `;
+
+            renderBrandCategoryDonut(rows, c3Mode, r => r.netSales);
+
+            // Left Table: Recent Sales Transactions
+            const query = document.getElementById('detailSearchInput').value.trim().toLowerCase();
+            const filteredSales = [...rows]
+                .filter(r => !query || `${r.invoiceNo} ${r.customer} ${r.productCode} ${r.productDesc} ${r.size} ${r.ah}ah ${r.salesRep}`.toLowerCase().includes(query))
+                .sort((a, b) => b.timestamp - a.timestamp);
+
+            document.getElementById('leftTableIcon').className = 'fa-solid fa-table-list text-pbi-cyan text-xs';
+            document.getElementById('leftTableTitle').textContent = `Recent Sales Transactions (${filteredSales.length} Invoices)`;
+            document.getElementById('leftTableSubtitle').textContent = 'Click row to filter by Customer';
+
+            document.getElementById('leftTableHead').innerHTML = `
+                <tr>
+                    <th class="py-1.5 px-2">Date</th>
+                    <th class="py-1.5 px-2">Invoice</th>
+                    <th class="py-1.5 px-2">Customer</th>
+                    <th class="py-1.5 px-2">Product (Size/Ah)</th>
+                    <th class="py-1.5 px-2 text-right">Qty</th>
+                    <th class="py-1.5 px-2 text-right">Net Sales</th>
+                    <th class="py-1.5 px-2 text-right">Gross Profit</th>
+                    <th class="py-1.5 px-2 text-right">GM%</th>
+                </tr>
+            `;
+
+            document.getElementById('leftTableBody').innerHTML = filteredSales.length === 0
+                ? `<tr><td colspan="8" class="py-6 text-center text-slate-500">ရွေးချယ်ထားသော Filter အတွက် အရောင်းမှတ်တမ်း မရှိပါ။</td></tr>`
+                : filteredSales.map(r => {
+                    const selected = filters.customer.has(r.customer);
+                    const gmBadge = r.gmPct >= 22
+                        ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                        : r.gmPct >= 15
+                            ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                            : 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+                    return `
+                        <tr onclick="toggleCrossFilter('customer', '${r.customer.replace(/'/g, "\\'")}')" class="hover:bg-slate-800/60 transition cursor-pointer ${selected ? 'bg-pbi-cyan/15' : ''}">
+                            <td class="py-1.5 px-2 text-slate-300 tabular-nums whitespace-nowrap">${r.dateStr}</td>
+                            <td class="py-1.5 px-2 font-semibold text-pbi-cyan whitespace-nowrap">${r.invoiceNo}</td>
+                            <td class="py-1.5 px-2 text-slate-200 max-w-[145px] truncate" title="${r.customer}">${r.customer}</td>
+                            <td class="py-1.5 px-2 whitespace-nowrap">
+                                <span class="text-slate-200 font-medium">${r.productCode}</span>
+                                <span class="ml-1 px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 text-[10px]">${r.size}•${r.ah}Ah</span>
+                            </td>
+                            <td class="py-1.5 px-2 text-right text-slate-200 tabular-nums">${r.qtySold}</td>
+                            <td class="py-1.5 px-2 text-right font-semibold text-white tabular-nums">${r.netSales.toLocaleString('en-US')}</td>
+                            <td class="py-1.5 px-2 text-right text-emerald-400 tabular-nums">${r.grossProfit.toLocaleString('en-US')}</td>
+                            <td class="py-1.5 px-2 text-right tabular-nums">
+                                <span class="px-1.5 py-0.5 rounded border text-[10px] font-semibold ${gmBadge}">${r.gmPct.toFixed(1)}%</span>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+            // Right Table: Sales Rep Performance
+            const repAgg = {};
+            rows.forEach(r => {
+                if (!repAgg[r.salesRep]) {
+                    repAgg[r.salesRep] = { rep: r.salesRep, invoices: new Set(), units: 0, net: 0, profit: 0 };
+                }
+                repAgg[r.salesRep].invoices.add(r.invoiceNo);
+                repAgg[r.salesRep].units += r.qtySold;
+                repAgg[r.salesRep].net += r.netSales;
+                repAgg[r.salesRep].profit += r.grossProfit;
+            });
+
+            const repList = Object.values(repAgg).sort((a, b) => b.net - a.net);
+            const maxRepNet = repList.length > 0 ? repList[0].net : 1;
+
+            document.getElementById('rightTableIcon').className = 'fa-solid fa-user-tie text-pbi-amber text-xs';
+            document.getElementById('rightTableTitle').textContent = 'Sales Rep Performance';
+            document.getElementById('rightTableSubtitle').textContent = 'Click Sales Rep to filter';
+            document.getElementById('rightTableBadge').textContent = `${repList.length} Reps`;
+
+            document.getElementById('rightTableContainer').innerHTML = repList.length === 0
+                ? `<div class="py-8 text-center text-xs text-slate-500">Sales Rep ဒေတာ မရှိပါ</div>`
+                : `<div class="space-y-2 pr-1">
+                    ${repList.map(repObj => {
+                        const gm = repObj.net > 0 ? (repObj.profit / repObj.net) * 100 : 0;
+                        const barPct = maxRepNet > 0 ? Math.round((repObj.net / maxRepNet) * 100) : 0;
+                        const selected = filters.rep.has(repObj.rep);
+
+                        return `
+                            <div onclick="toggleCrossFilter('rep', '${repObj.rep.replace(/'/g, "\\'")}')" class="p-2 rounded-lg border transition cursor-pointer ${selected ? 'bg-pbi-cyan/15 border-pbi-cyan/60' : 'bg-[#080D19]/80 border-slate-800/90 hover:border-slate-700'}">
+                                <div class="flex items-center justify-between text-xs">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-pbi-cyan">
+                                            ${repObj.rep.substring(0, 2).toUpperCase()}
+                                        </span>
+                                        <div>
+                                            <div class="font-bold text-white">${repObj.rep}</div>
+                                            <div class="text-[10px] text-slate-400">${repObj.invoices.size} Inv • ${repObj.units} Units</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="font-bold text-pbi-cyan tabular-nums">${formatCompactKs(repObj.net)} Ks</div>
+                                        <div class="text-[10px] text-emerald-400 font-semibold tabular-nums">GM ${gm.toFixed(1)}%</div>
+                                    </div>
+                                </div>
+                                <div class="mt-1.5 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                    <div class="h-full bg-gradient-to-r from-pbi-cyan to-emerald-400 rounded-full" style="width: ${barPct}%"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>`;
+        }
+
+        // =====================================================================
+        // 11. SHARED CHART.JS RENDERERS (SAFE DELAYED CLICK HANDLERS)
+        // =====================================================================
+        function setChart2SubMode(mod, subMode) {
+            chart2SubMode[mod] = subMode;
+            renderActiveModule();
+        }
+
+        function setChart3SubMode(mod, subMode) {
+            chart3SubMode[mod] = subMode;
+            renderActiveModule();
+        }
+
+        function renderFiscalComboChart({ labels, barLabel, barData, barDefaultColor, barActiveColor, lineLabel, lineData, lineColor }) {
+            const canvas = document.getElementById('canvasChart1');
+            const existing = Chart.getChart(canvas);
+            if (existing) existing.destroy();
+            chart1Inst = null;
+
+            const ctx = canvas.getContext('2d');
+            const barColors = labels.map(m => filters.month.has(m) ? barActiveColor : barDefaultColor);
+
+            chart1Inst = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: barLabel,
+                            data: barData,
+                            backgroundColor: barColors,
+                            borderRadius: 4,
+                            yAxisID: 'y',
+                            order: 2
+                        },
+                        {
+                            type: 'line',
+                            label: lineLabel,
+                            data: lineData,
+                            borderColor: lineColor,
+                            backgroundColor: lineColor,
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            tension: 0.32,
+                            yAxisID: 'y1',
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (evt, elems) => {
+                        if (elems.length > 0) {
+                            const clickedMonth = labels[elems[0].index];
+                            setTimeout(() => toggleCrossFilter('month', clickedMonth), 0);
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            align: 'end',
+                            labels: { boxWidth: 8, usePointStyle: true, font: { size: 10 }, padding: 6 }
+                        },
+                        tooltip: {
+                            backgroundColor: '#0F172A',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: ctx => {
+                                    const val = ctx.raw || 0;
+                                    if (ctx.dataset.yAxisID === 'y1' && lineLabel.toLowerCase().includes('unit')) {
+                                        return `${ctx.dataset.label}: ${val.toLocaleString('en-US')} Units`;
+                                    }
+                                    return `${ctx.dataset.label}: ${formatKs(val)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                        y: {
+                            beginAtZero: true,
+                            position: 'left',
+                            grid: { color: 'rgba(51, 65, 85, 0.35)' },
+                            ticks: { font: { size: 10 }, callback: v => formatCompactKs(v) }
+                        },
+                        y1: {
+                            beginAtZero: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            ticks: {
+                                font: { size: 10 },
+                                callback: v => lineLabel.toLowerCase().includes('unit') ? v : formatCompactKs(v)
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderComparisonGroupedChart({ labels, labelA, dataA, labelB, dataB, onBarClick }) {
+            const canvas = document.getElementById('canvasChart1');
+            const existing = Chart.getChart(canvas);
+            if (existing) existing.destroy();
+            chart1Inst = null;
+
+            const ctx = canvas.getContext('2d');
+            chart1Inst = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: labelA,
+                            data: dataA,
+                            backgroundColor: 'rgba(6, 182, 212, 0.88)',
+                            borderRadius: 4,
+                            barPercentage: 0.78,
+                            categoryPercentage: 0.72
+                        },
+                        {
+                            label: labelB,
+                            data: dataB,
+                            backgroundColor: 'rgba(139, 92, 246, 0.82)',
+                            borderRadius: 4,
+                            barPercentage: 0.78,
+                            categoryPercentage: 0.72
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (evt, elems) => {
+                        if (elems.length > 0 && onBarClick) {
+                            const selectedLabel = labels[elems[0].index];
+                            setTimeout(() => onBarClick(selectedLabel), 0);
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            align: 'end',
+                            labels: { boxWidth: 8, usePointStyle: true, font: { size: 10 }, padding: 6 }
+                        },
+                        tooltip: {
+                            backgroundColor: '#0F172A',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: ${formatKs(ctx.raw)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(51, 65, 85, 0.35)' },
+                            ticks: { font: { size: 10 }, callback: v => formatCompactKs(v) }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderAgingBucketChart({ buckets, valuations, units, colors }) {
+            const canvas = document.getElementById('canvasChart1');
+            const existing = Chart.getChart(canvas);
+            if (existing) existing.destroy();
+            chart1Inst = null;
+
+            const ctx = canvas.getContext('2d');
+            chart1Inst = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: buckets,
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: 'FIFO Valuation (MMK)',
+                            data: valuations,
+                            backgroundColor: colors,
+                            borderRadius: 6,
+                            yAxisID: 'y',
+                            order: 2
+                        },
+                        {
+                            type: 'line',
+                            label: 'Balance Units',
+                            data: units,
+                            borderColor: '#38BDF8',
+                            backgroundColor: '#38BDF8',
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            yAxisID: 'y1',
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (evt, elems) => {
+                        if (elems.length > 0) {
+                            const bucket = buckets[elems[0].index];
+                            setTimeout(() => toggleCrossFilter('agingBucket', bucket), 0);
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            align: 'end',
+                            labels: { boxWidth: 8, usePointStyle: true, font: { size: 10 }, padding: 6 }
+                        },
+                        tooltip: {
+                            backgroundColor: '#0F172A',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: ctx => ctx.dataset.yAxisID === 'y1'
+                                    ? `Balance Units: ${ctx.raw} Units`
+                                    : `FIFO Valuation: ${formatKs(ctx.raw)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 11, weight: '600' } } },
+                        y: {
+                            beginAtZero: true,
+                            position: 'left',
+                            grid: { color: 'rgba(51, 65, 85, 0.35)' },
+                            ticks: { font: { size: 10 }, callback: v => formatCompactKs(v) }
+                        },
+                        y1: {
+                            beginAtZero: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            ticks: { font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderHorizontalBarChart({ rawKeys, displayLabels, values, units, activeSet, defaultColor, activeColor, metricLabel, onSelect }) {
+            const canvas = document.getElementById('canvasChart2');
+            const existing = Chart.getChart(canvas);
+            if (existing) existing.destroy();
+            chart2Inst = null;
+
+            const ctx = canvas.getContext('2d');
+            const barColors = rawKeys.map(k => (activeSet && activeSet.has(k)) ? activeColor : defaultColor);
+
+            chart2Inst = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: displayLabels,
+                    datasets: [{
+                        label: metricLabel,
+                        data: values,
+                        backgroundColor: barColors,
+                        borderRadius: 4,
+                        barPercentage: 0.72
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (evt, elems) => {
+                        if (elems.length > 0 && onSelect) {
+                            const selectedKey = rawKeys[elems[0].index];
+                            setTimeout(() => onSelect(selectedKey), 0);
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0F172A',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: ctx => `${metricLabel}: ${formatKs(ctx.raw)} (${units[ctx.dataIndex]} Units)`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { font: { size: 10 }, callback: v => formatCompactKs(v) }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { font: { size: 10, weight: '600' }, color: '#CBD5E1' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderBrandCategoryDonut(rows, mode, valueExtractor) {
+            const canvas = document.getElementById('canvasChart3');
+            const existing = Chart.getChart(canvas);
+            if (existing) existing.destroy();
+            chart3Inst = null;
+
+            const agg = {};
+            rows.forEach(r => {
+                const key = mode === 'BRAND' ? r.brand : r.category;
+                agg[key] = (agg[key] || 0) + valueExtractor(r);
+            });
+
+            const labels = Object.keys(agg).sort((a, b) => agg[b] - agg[a]);
+            const values = labels.map(k => agg[k]);
+            const total = values.reduce((a, b) => a + b, 0);
+
+            const palette = ['#06B6D4', '#F59E0B', '#10B981', '#8B5CF6', '#F43F5E', '#38BDF8'];
+            const bgColors = labels.map((_, idx) => palette[idx % palette.length]);
+
+            const ctx = canvas.getContext('2d');
+            chart3Inst = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: bgColors,
+                        borderColor: '#0F172A',
+                        borderWidth: 2,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '64%',
+                    onClick: (evt, elems) => {
+                        if (elems.length > 0) {
+                            const clicked = labels[elems[0].index];
+                            setTimeout(() => toggleCrossFilter(mode === 'BRAND' ? 'brand' : 'category', clicked), 0);
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0F172A',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: ctx => {
+                                    const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0;
+                                    return `${ctx.label}: ${formatCompactKs(ctx.raw)} Ks (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const legendEl = document.getElementById('chart3Legend');
+            legendEl.innerHTML = labels.length === 0
+                ? `<span class="text-slate-500">No data</span>`
+                : labels.map((lbl, idx) => {
+                    const pct = total > 0 ? ((values[idx] / total) * 100).toFixed(1) : '0.0';
+                    const filterKey = mode === 'BRAND' ? 'brand' : 'category';
+                    const isSelected = filters[filterKey].has(lbl);
+                    return `
+                        <button onclick="toggleCrossFilter('${filterKey}', '${lbl.replace(/'/g, "\\'")}')" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border transition cursor-pointer ${isSelected ? 'bg-slate-800 border-pbi-cyan text-white font-bold' : 'border-transparent text-slate-300 hover:bg-slate-800/60'}">
+                            <span class="w-2 h-2 rounded-full" style="background:${bgColors[idx]}"></span>
+                            <span>${lbl}</span>
+                            <span class="text-slate-400 tabular-nums">(${pct}%)</span>
+                        </button>
+                    `;
+                }).join('');
+        }
+
+        // =====================================================================
+        // 12. CURRENCY FORMATTERS & NON-BLOCKING TOAST HELPER
+        // =====================================================================
+        function formatCompactKs(num) {
+            const abs = Math.abs(num);
+            const sign = num < 0 ? '-' : '';
+            if (abs >= 1e9) return `${sign}${(abs / 1e9).toFixed(2)}B`;
+            if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(2)}M`;
+            if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(1)}K`;
+            return `${sign}${Math.round(abs).toLocaleString('en-US')}`;
+        }
+
+        function formatKs(num) {
+            return `${formatCompactKs(num)} Ks`;
+        }
+
+        let toastTimer = null;
+        function showToast(msg, isError = false) {
+            const banner = document.getElementById('toastBanner');
+            const icon = document.getElementById('toastIcon');
+            const text = document.getElementById('toastMessage');
+
+            text.textContent = msg;
+            if (isError) {
+                banner.className = 'fixed bottom-4 right-4 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#0F172A] border border-rose-500/60 shadow-2xl text-xs text-rose-200';
+                icon.className = 'fa-solid fa-triangle-exclamation text-rose-400 text-sm';
+            } else {
+                banner.className = 'fixed bottom-4 right-4 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#0F172A] border border-pbi-cyan/50 shadow-2xl text-xs text-white';
+                icon.className = 'fa-solid fa-circle-check text-pbi-emerald text-sm';
+            }
+
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                banner.classList.add('hidden');
+                banner.classList.remove('flex');
+            }, 3400);
+        }
+    </script>
+</body>
+</html>
